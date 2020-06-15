@@ -1,12 +1,12 @@
-package xtest_test
+package xtest
 
 import (
 	"errors"
-	"github.com/pubgo/xtest"
-	"github.com/smartystreets/assertions/should"
-	"github.com/smartystreets/gunit"
 	"testing"
 	"time"
+
+	"github.com/smartystreets/assertions/should"
+	"github.com/smartystreets/gunit"
 )
 
 func TestXTest(t *testing.T) {
@@ -18,12 +18,12 @@ type xtestFixture struct {
 }
 
 func (t *xtestFixture) TestTick() {
-	fn := xtest.TestFuncWith(func(args ...interface{}) {
+	fn := TestFuncWith(func(args ...interface{}) {
 		i := 0
-		for range xtest.Tick(args...) {
+		for range Tick(args...) {
 			i++
 		}
-		t.So(xtest.SliceOf(1, 10), should.Contain, i)
+		t.So(SliceOf(1, 10), should.Contain, i)
 	})
 	fn.In(10, -1)
 	fn.In(time.Millisecond * 10)
@@ -31,12 +31,12 @@ func (t *xtestFixture) TestTick() {
 }
 
 func (t *xtestFixture) TestCount() {
-	fn := xtest.TestFuncWith(func(n int) {
+	fn := TestFuncWith(func(n int) {
 		i := 0
-		for range xtest.Count(n) {
+		for range Count(n) {
 			i++
 		}
-		t.So(xtest.SliceOf(0, 10), should.Contain, i)
+		t.So(SliceOf(0, 10), should.Contain, i)
 	})
 	fn.In(10, -1)
 	t.So(fn.Do(), should.Equal, nil)
@@ -44,7 +44,7 @@ func (t *xtestFixture) TestCount() {
 }
 
 func (t *xtestFixture) TestRangeString() {
-	fn := xtest.TestFuncWith(func(min, max int) {
+	fn := TestFuncWith(func(min, max int) {
 		defer func() {
 			err := recover()
 			if err == nil {
@@ -54,7 +54,7 @@ func (t *xtestFixture) TestRangeString() {
 			switch err := err.(type) {
 			case error:
 				t.Println(err.Error())
-				t.So(xtest.SliceOf("invalid argument to Intn", "runtime error: makeslice: len out of range"), should.Contain, err.Error())
+				t.So(SliceOf("invalid argument to Intn", "runtime error: makeslice: len out of range"), should.Contain, err.Error())
 			case string:
 				t.So("invalid argument to Intn", should.Equal, err)
 			default:
@@ -62,7 +62,7 @@ func (t *xtestFixture) TestRangeString() {
 			}
 		}()
 
-		dt := xtest.RangeString(min, max)
+		dt := RangeString(min, max)
 		t.Assert(len(dt) < max && len(dt) >= min)
 	})
 	fn.In(-10, 0, 10)
@@ -71,7 +71,7 @@ func (t *xtestFixture) TestRangeString() {
 }
 
 func (t *xtestFixture) TestMockRegister() {
-	fn := xtest.TestFuncWith(func(fns ...interface{}) {
+	fn := TestFuncWith(func(fns ...interface{}) {
 		defer func() {
 			err := recover()
 			if err == nil {
@@ -79,13 +79,13 @@ func (t *xtestFixture) TestMockRegister() {
 			}
 			switch err := err.(type) {
 			case error:
-				xtest.AssertErrs(err, xtest.ErrParamIsNil, xtest.ErrParamTypeNotFunc)
+				AssertErrs(err, ErrParamIsNil, ErrParamTypeNotFunc)
 			default:
 				panic(err)
 			}
 		}()
 
-		xtest.MockRegister(fns...)
+		MockRegister(fns...)
 	})
 	fn.In(
 		nil,
@@ -96,7 +96,7 @@ func (t *xtestFixture) TestMockRegister() {
 }
 
 func (t *xtestFixture) TestFuncCost() {
-	fn := xtest.TestFuncWith(func(fn func()) {
+	fn := TestFuncWith(func(fn func()) {
 		defer func() {
 			err := recover()
 			if err == nil {
@@ -104,10 +104,10 @@ func (t *xtestFixture) TestFuncCost() {
 			}
 			t.So(err, should.HaveSameTypeAs, errors.New(""))
 			err = err.(error)
-			t.So(err, should.Equal, xtest.ErrParamIsNil)
+			t.So(err, should.Equal, ErrParamIsNil)
 		}()
 
-		t.So(xtest.SliceOf(time.Duration(1), time.Duration(0)), should.Contain, xtest.CostWith(fn)/time.Millisecond)
+		t.So(SliceOf(time.Duration(1), time.Duration(0)), should.Contain, CostWith(fn)/time.Millisecond)
 	})
 	fn.In(
 		nil,
@@ -119,11 +119,11 @@ func (t *xtestFixture) TestFuncCost() {
 
 func (t *xtestFixture) TestTry() {
 	e := errors.New("error")
-	fn := xtest.TestFuncWith(func(fn func()) {
-		err := xtest.Try(fn)
-		xtest.AssertErrs(err, nil, xtest.ErrParamIsNil, e)
+	fn := TestFuncWith(func(fn func()) {
+		err := Try(fn)
+		AssertErrs(err, nil, ErrParamIsNil, e)
 		switch err {
-		case xtest.ErrParamIsNil:
+		case ErrParamIsNil:
 			t.So(fn, should.Equal, nil)
 		}
 	})
@@ -137,16 +137,16 @@ func (t *xtestFixture) TestTry() {
 
 func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
-	fn := xtest.TestFuncWith(func(dur time.Duration, fn func()) error {
-		err := xtest.TimeoutWith(dur, fn)
-		xtest.AssertErrs(err, nil, xtest.ErrParamIsNil, xtest.ErrFuncTimeout, xtest.ErrDurZero, err1)
+	fn := TestFuncWith(func(dur time.Duration, fn func()) error {
+		err := TimeoutWith(dur, fn)
+		AssertErrs(err, nil, ErrParamIsNil, ErrFuncTimeout, ErrDurZero, err1)
 
 		switch err {
-		case xtest.ErrParamIsNil:
+		case ErrParamIsNil:
 			t.So(fn, should.Equal, nil)
-		case xtest.ErrFuncTimeout:
-			t.So(xtest.CostWith(fn), should.BeGreaterThan, dur)
-		case xtest.ErrDurZero:
+		case ErrFuncTimeout:
+			t.So(CostWith(fn), should.BeGreaterThan, dur)
+		case ErrDurZero:
 			t.So(dur, should.BeLessThan, 0)
 		}
 		return err
