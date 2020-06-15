@@ -79,7 +79,7 @@ func (t *xtestFixture) TestMockRegister() {
 			}
 			switch err := err.(type) {
 			case error:
-				t.So(xtest.SliceOf(xtest.ErrParamIsNil, xtest.ErrParamTypeNotFunc), should.Contain, err)
+				xtest.AssertErrs(err, xtest.ErrParamIsNil, xtest.ErrParamTypeNotFunc)
 			default:
 				panic(err)
 			}

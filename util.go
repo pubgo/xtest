@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 )
 
 func Wrap(fn interface{}) func(...interface{}) func(...interface{}) (err error) {
@@ -108,4 +109,120 @@ func valuePut(v []reflect.Value) {
 
 func SliceOf(args ...interface{}) []interface{} {
 	return args
+}
+
+// Tick 简单定时器
+// Example: Tick(100, time.Second)
+func Tick(args ...interface{}) <-chan time.Time {
+	var n int
+	var dur time.Duration
+
+	for _, arg := range args {
+		switch ag := arg.(type) {
+		case int:
+			n = ag
+		case time.Duration:
+			dur = ag
+		}
+	}
+
+	if n <= 0 {
+		n = 1
+	}
+	if dur <= 0 {
+		dur = time.Second
+	}
+
+	var c = make(chan time.Time)
+	go func() {
+		tk := time.NewTicker(dur)
+		var i int
+		for t := range tk.C {
+			if i == n {
+				tk.Stop()
+				break
+			}
+			i++
+			c <- t
+		}
+		close(c)
+	}()
+	return c
+}
+
+// Count ...
+func Count(n int) <-chan int {
+	var c = make(chan int)
+	go func() {
+		for i := 0; i < n; i++ {
+			c <- i
+		}
+		close(c)
+	}()
+	return c
+}
+
+func Try(fn func()) (e error) {
+	if fn == nil {
+		return ErrParamIsNil
+	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			switch err := err.(type) {
+			case error:
+				e = err
+			default:
+				e = fmt.Errorf("%s", err)
+			}
+		}
+	}()
+	fn()
+	return
+}
+
+func TimeoutWith(dur time.Duration, fn func()) error {
+	if dur < 0 {
+		return ErrDurZero
+	}
+
+	if fn == nil {
+		return ErrParamIsNil
+	}
+
+	var ch = make(chan error, 1)
+	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				switch err := err.(type) {
+				case error:
+					ch <- err
+				default:
+					ch <- fmt.Errorf("%s", err)
+				}
+			}
+		}()
+		fn()
+		ch <- nil
+	}()
+
+	select {
+	case err := <-ch:
+		return err
+	case <-time.After(dur):
+		return ErrFuncTimeout
+	}
+}
+
+func CostWith(fn func()) (dur time.Duration) {
+	if fn == nil {
+		panic(ErrParamIsNil)
+	}
+
+	defer func(start time.Time) {
+		dur = time.Since(start)
+	}(time.Now())
+
+	fn()
+	return
 }
