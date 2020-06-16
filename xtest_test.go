@@ -2,10 +2,13 @@ package xtest
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/smartystreets/assertions/should"
+	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/gunit"
 )
 
@@ -79,7 +82,7 @@ func (t *xtestFixture) TestMockRegister() {
 			}
 			switch err := err.(type) {
 			case error:
-				AssertErrs(err, ErrParamIsNil, ErrParamTypeNotFunc)
+				t.So(SliceOf(ErrParamIsNil, ErrParamTypeNotFunc), ShouldContain, err)
 			default:
 				panic(err)
 			}
@@ -92,7 +95,7 @@ func (t *xtestFixture) TestMockRegister() {
 		"hello",
 		func() {},
 	)
-	t.So(fn.Do(), should.Equal, nil)
+	t.So(fn.Do(), should.BeNil)
 }
 
 func (t *xtestFixture) TestFuncCost() {
@@ -121,7 +124,7 @@ func (t *xtestFixture) TestTry() {
 	e := errors.New("error")
 	fn := TestFuncWith(func(fn func()) {
 		err := Try(fn)
-		AssertErrs(err, nil, ErrParamIsNil, e)
+		t.So(SliceOf(nil, ErrParamIsNil, e), ShouldContain, err)
 		switch err {
 		case ErrParamIsNil:
 			t.So(fn, should.Equal, nil)
@@ -130,16 +133,16 @@ func (t *xtestFixture) TestTry() {
 	fn.In(
 		nil,
 		func() {},
-		func() { panic("error") },
+		func() { panic(e) },
 	)
-	t.So(fn.Do(), should.Equal, nil)
+	t.So(fn.Do(), should.BeNil)
 }
 
 func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
 	fn := TestFuncWith(func(dur time.Duration, fn func()) error {
 		err := TimeoutWith(dur, fn)
-		AssertErrs(err, nil, ErrParamIsNil, ErrFuncTimeout, ErrDurZero, err1)
+		t.So(SliceOf(nil, ErrParamIsNil, ErrFuncTimeout, ErrDurZero, err1), ShouldContain, err)
 
 		switch err {
 		case ErrParamIsNil:
@@ -162,5 +165,38 @@ func (t *xtestFixture) TestTimeoutWith() {
 			panic(err1)
 		},
 	)
-	t.So(fn.Do(), should.Equal, nil)
+	t.So(fn.Do(), should.BeNil)
+}
+
+func TestTimeoutWith(t *testing.T) {
+	var err1 = errors.New("hello")
+	Convey("TimeoutWith", t, func() {
+		fn := TestFuncWith(func(dur time.Duration, fn func()) {
+			Convey(fmt.Sprint("dur=", dur, "  fn=", reflect.ValueOf(fn)), func() {
+				err := TimeoutWith(dur, fn)
+				So(SliceOf(nil, ErrParamIsNil, ErrFuncTimeout, ErrDurZero, err1), ShouldContain, err)
+
+				switch err {
+				case ErrParamIsNil:
+					So(fn, should.Equal, nil)
+				case ErrFuncTimeout:
+					So(CostWith(fn), should.BeGreaterThan, dur)
+				case ErrDurZero:
+					So(dur, should.BeLessThan, 0)
+				}
+			})
+		})
+		fn.In(time.Duration(-1), time.Millisecond*10)
+		fn.In(
+			nil,
+			func() {},
+			func() {
+				time.Sleep(time.Millisecond * 20)
+			},
+			func() {
+				panic(err1)
+			},
+		)
+		So(fn.Do(), should.BeNil)
+	})
 }

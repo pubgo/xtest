@@ -1,6 +1,6 @@
 // Package goparse contains logic for parsing Go files. Specifically it parses
 // source and test files into domain models for generating tests.
-package main
+package internal
 
 import (
 	"errors"
@@ -185,10 +185,6 @@ func parseFunc(fDecl *ast.FuncDecl, ul map[string]types.Type, el map[*types.Stru
 	fs := parseFieldList(fDecl.Type.Results, ul)
 	i := 0
 	for _, fi := range fs {
-		if fi.Type.String() == "error" {
-			f.ReturnsError = true
-			continue
-		}
 		fi.Index = i
 		f.Results = append(f.Results, fi)
 		i++

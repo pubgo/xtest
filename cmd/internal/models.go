@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"strings"
@@ -19,7 +19,7 @@ func (e *Expression) String() string {
 		value = "*" + value
 	}
 	if e.IsVariadic {
-		return "[]" + value
+		return "..." + value
 	}
 	return value
 }

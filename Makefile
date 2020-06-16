@@ -4,6 +4,7 @@ test:
 	@go test -timeout=1s -race -cover -coverprofile=out.out ./...
 	@go tool cover -func=out.out
 
+.PHONY: test_html
 test_html:
 	@go test -timeout=1s -race -cover -coverprofile=out.out ./...
 	@go tool cover -html=out.out
@@ -22,6 +23,8 @@ test_profile:
 	@go test -bench=. -benchmem -memprofile memprofile.out -cpuprofile profile.out example_test.go
 	@go tool pprof -http=":8081" profile.out
 
-.PHONY: test_gen
-test_gen:
-	@gotests -exported -w ./
+.PHONY: build
+build:
+	@go build -o main cmd/main.go
+	./main xtest.go
+

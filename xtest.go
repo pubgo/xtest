@@ -2,7 +2,6 @@ package xtest
 
 import (
 	fuzz "github.com/google/gofuzz"
-	"github.com/smartystreets/assertions/should"
 	"reflect"
 )
 
@@ -23,14 +22,12 @@ func MockRegister(fns ...interface{}) {
 
 // InErrs ...
 func InErrs(d error, ds ...error) (b bool) {
-	return should.Contain(ds, d) == ""
-}
-
-// AssertErrs ...
-func AssertErrs(d error, ds ...error) {
-	if !InErrs(d, ds...) {
-		logger.Fatalf("%s, %s", d, ds)
+	for _, d1 := range ds {
+		if d == d1 {
+			return true
+		}
 	}
+	return false
 }
 
 // Check ...
@@ -94,7 +91,7 @@ type xtest struct {
 	params [][]interface{}
 }
 
-func (t *xtest) In(args ...interface{}) *xtest {
+func (t *xtest) In(args ...interface{}) {
 	var params [][]interface{}
 	if len(t.params) == 0 {
 		for _, arg := range args {
@@ -108,7 +105,6 @@ func (t *xtest) In(args ...interface{}) *xtest {
 		}
 	}
 	t.params = params
-	return t
 }
 
 func (t *xtest) Do() (err error) {

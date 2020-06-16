@@ -1,10 +1,11 @@
 // Package gotests contains the core logic for generating table-driven tests.
-package main
+package internal
 
 import (
 	"fmt"
 	"go/importer"
 	"go/types"
+	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -118,6 +119,11 @@ func generateTest(src Path, files []Path, opt *Options) (*GeneratedTest, error) 
 		Path:      testPath,
 		Functions: funcs,
 	}, nil
+}
+
+func IsFileExist(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }
 
 func parseTestFile(p *Parser, testPath string, h *Header) (*Header, []string, error) {
