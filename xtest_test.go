@@ -3,6 +3,7 @@ package xtest
 import (
 	"errors"
 	"fmt"
+	"github.com/pubgo/xerror"
 	"reflect"
 	"testing"
 	"time"
@@ -22,6 +23,8 @@ type xtestFixture struct {
 
 func (t *xtestFixture) TestTick() {
 	fn := TestFuncWith(func(args ...interface{}) {
+		defer xerror.RespExit()
+
 		i := 0
 		for range Tick(args...) {
 			i++
@@ -30,11 +33,13 @@ func (t *xtestFixture) TestTick() {
 	})
 	fn.In(10, -1)
 	fn.In(time.Millisecond * 10)
-	t.So(fn.Do(), should.Equal, nil)
+	fn.Do()
 }
 
 func (t *xtestFixture) TestCount() {
 	fn := TestFuncWith(func(n int) {
+		defer xerror.RespExit()
+
 		i := 0
 		for range Count(n) {
 			i++
@@ -42,51 +47,36 @@ func (t *xtestFixture) TestCount() {
 		t.So(SliceOf(0, 10), should.Contain, i)
 	})
 	fn.In(10, -1)
-	t.So(fn.Do(), should.Equal, nil)
-
+	fn.Do()
 }
 
 func (t *xtestFixture) TestRangeString() {
 	fn := TestFuncWith(func(min, max int) {
-		defer func() {
-			err := recover()
-			if err == nil {
-				return
-			}
-
-			switch err := err.(type) {
-			case error:
-				t.Println(err.Error())
-				t.So(SliceOf("invalid argument to Intn", "runtime error: makeslice: len out of range"), should.Contain, err.Error())
-			case string:
-				t.So("invalid argument to Intn", should.Equal, err)
+		defer xerror.Resp(func(err xerror.XRErr) {
+			switch err.Error() {
+			case "invalid argument to Intn", "runtime error: makeslice: len out of range":
 			default:
-				panic(err)
+				xerror.Exit(err)
 			}
-		}()
+		})
 
 		dt := RangeString(min, max)
 		t.Assert(len(dt) < max && len(dt) >= min)
 	})
 	fn.In(-10, 0, 10)
 	fn.In(-10, 0, 10, 20)
-	t.So(fn.Do(), should.Equal, nil)
+	fn.Do()
 }
 
 func (t *xtestFixture) TestMockRegister() {
 	fn := TestFuncWith(func(fns ...interface{}) {
-		defer func() {
-			err := recover()
-			if err == nil {
-				return
-			}
-			switch err := err.(type) {
-			case error:
-				t.So(SliceOf(ErrParamIsNil, ErrParamTypeNotFunc), ShouldContain, err)
+		defer xerror.Resp(func(err xerror.XRErr) {
+			switch err := err.Unwrap(); err {
+			case ErrParamIsNil, ErrParamTypeNotFunc:
 			default:
 				panic(err)
 			}
-		}()
+		})
 
 		MockRegister(fns...)
 	})
@@ -95,20 +85,18 @@ func (t *xtestFixture) TestMockRegister() {
 		"hello",
 		func() {},
 	)
-	t.So(fn.Do(), should.BeNil)
+	fn.Do()
 }
 
 func (t *xtestFixture) TestFuncCost() {
 	fn := TestFuncWith(func(fn func()) {
-		defer func() {
-			err := recover()
-			if err == nil {
-				return
+		defer xerror.Resp(func(err xerror.XRErr) {
+			switch err.Unwrap() {
+			case ErrParamIsNil:
+			default:
+				xerror.Exit(err)
 			}
-			t.So(err, should.HaveSameTypeAs, errors.New(""))
-			err = err.(error)
-			t.So(err, should.Equal, ErrParamIsNil)
-		}()
+		})
 
 		t.So(SliceOf(time.Duration(1), time.Duration(0)), should.Contain, CostWith(fn)/time.Millisecond)
 	})
@@ -117,17 +105,20 @@ func (t *xtestFixture) TestFuncCost() {
 		func() {},
 		func() { time.Sleep(time.Millisecond) },
 	)
-	t.So(fn.Do(), should.Equal, nil)
+	fn.Do()
 }
 
 func (t *xtestFixture) TestTry() {
 	e := errors.New("error")
 	fn := TestFuncWith(func(fn func()) {
-		err := Try(fn)
-		t.So(SliceOf(nil, ErrParamIsNil, e), ShouldContain, err)
-		switch err {
+		defer xerror.RespExit()
+
+		switch err := Try(fn); err {
 		case ErrParamIsNil:
-			t.So(fn, should.Equal, nil)
+			t.So(fn, ShouldBeNil)
+		case nil:
+		default:
+			xerror.Exit(err)
 		}
 	})
 	fn.In(
@@ -135,24 +126,26 @@ func (t *xtestFixture) TestTry() {
 		func() {},
 		func() { panic(e) },
 	)
-	t.So(fn.Do(), should.BeNil)
+	fn.Do()
 }
 
 func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
-	fn := TestFuncWith(func(dur time.Duration, fn func()) error {
-		err := TimeoutWith(dur, fn)
-		t.So(SliceOf(nil, ErrParamIsNil, ErrFuncTimeout, ErrDurZero, err1), ShouldContain, err)
+	fn := TestFuncWith(func(dur time.Duration, fn func()) {
+		defer xerror.RespExit()
 
-		switch err {
+		switch err := TimeoutWith(dur, fn); err {
 		case ErrParamIsNil:
-			t.So(fn, should.Equal, nil)
+			So(fn, ShouldBeNil)
 		case ErrFuncTimeout:
-			t.So(CostWith(fn), should.BeGreaterThan, dur)
+			So(CostWith(fn), should.BeGreaterThan, dur)
 		case ErrDurZero:
-			t.So(dur, should.BeLessThan, 0)
+			So(dur, should.BeLessThan, 0)
+		case err1:
+		case nil:
+		default:
+			xerror.Exit(err)
 		}
-		return err
 	})
 	fn.In(time.Duration(-1), time.Millisecond*10)
 	fn.In(
@@ -165,7 +158,7 @@ func (t *xtestFixture) TestTimeoutWith() {
 			panic(err1)
 		},
 	)
-	t.So(fn.Do(), should.BeNil)
+	fn.Do()
 }
 
 func TestTimeoutWith(t *testing.T) {
@@ -173,16 +166,19 @@ func TestTimeoutWith(t *testing.T) {
 	Convey("TimeoutWith", t, func() {
 		fn := TestFuncWith(func(dur time.Duration, fn func()) {
 			Convey(fmt.Sprint("dur=", dur, "  fn=", reflect.ValueOf(fn)), func() {
-				err := TimeoutWith(dur, fn)
-				So(SliceOf(nil, ErrParamIsNil, ErrFuncTimeout, ErrDurZero, err1), ShouldContain, err)
+				defer xerror.RespExit()
 
-				switch err {
+				switch err := TimeoutWith(dur, fn); err {
 				case ErrParamIsNil:
-					So(fn, should.Equal, nil)
+					So(fn, ShouldBeNil)
 				case ErrFuncTimeout:
 					So(CostWith(fn), should.BeGreaterThan, dur)
 				case ErrDurZero:
 					So(dur, should.BeLessThan, 0)
+				case err1:
+				case nil:
+				default:
+					xerror.Exit(err)
 				}
 			})
 		})
@@ -197,6 +193,6 @@ func TestTimeoutWith(t *testing.T) {
 				panic(err1)
 			},
 		)
-		So(fn.Do(), should.BeNil)
+		fn.Do()
 	})
 }

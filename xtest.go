@@ -2,6 +2,7 @@ package xtest
 
 import (
 	fuzz "github.com/google/gofuzz"
+	"github.com/pubgo/xerror"
 	"reflect"
 )
 
@@ -11,11 +12,13 @@ var fns []interface{}
 func MockRegister(fns ...interface{}) {
 	for _, fn := range fns {
 		if fn == nil {
-			panic(ErrParamIsNil)
+			xerror.Panic(ErrParamIsNil)
 		}
+
 		if reflect.TypeOf(fn).Kind() != reflect.Func {
-			panic(ErrParamTypeNotFunc)
+			xerror.Panic(ErrParamTypeNotFunc)
 		}
+
 		fns = append(fns, fn)
 	}
 }
@@ -49,7 +52,7 @@ func Mock(args ...interface{}) {
 
 	for i := range args {
 		if args[i] == nil {
-			logger.Fatalln("the parameter of [Foreach] must not be nil")
+			xerror.Panic(ErrForeachParameterNil)
 		}
 
 		switch reflect.TypeOf(args[i]).Kind() {
@@ -107,23 +110,21 @@ func (t *xtest) In(args ...interface{}) {
 	t.params = params
 }
 
-func (t *xtest) Do() (err error) {
+func (t *xtest) Do() {
 	wfn := Wrap(t.fn)
 	for _, param := range t.params {
-		if err1 := wfn(param...)(); err1 != nil {
-			err = err1
-		}
+		_ = wfn(param...)()
 	}
 	return
 }
 
 func TestFuncWith(fn interface{}) *xtest {
 	if fn == nil {
-		logger.Fatalln(ErrParamIsNil)
+		xerror.Panic(ErrParamIsNil)
 	}
 
 	if reflect.TypeOf(fn).Kind() != reflect.Func {
-		logger.Fatalln(ErrParamTypeNotFunc)
+		xerror.Panic(ErrParamTypeNotFunc)
 	}
 
 	return &xtest{fn: fn}

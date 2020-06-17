@@ -2,6 +2,7 @@ package xtest
 
 import (
 	"fmt"
+	"github.com/pubgo/xerror"
 	"reflect"
 	"sync"
 	"time"
@@ -9,7 +10,7 @@ import (
 
 func Wrap(fn interface{}) func(...interface{}) func(...interface{}) (err error) {
 	if fn == nil {
-		logger.Fatalln(ErrParamIsNil)
+		xerror.Panic(ErrParamIsNil)
 	}
 
 	_tr := tryWrap(reflect.ValueOf(fn))
@@ -35,7 +36,7 @@ func Wrap(fn interface{}) func(...interface{}) func(...interface{}) (err error) 
 
 func tryWrap(fn reflect.Value) func(...reflect.Value) func(...reflect.Value) (err error) {
 	if fn.Type().Kind() != reflect.Func {
-		logger.Fatalln(ErrParamTypeNotFunc)
+		xerror.Panic(ErrParamTypeNotFunc)
 	}
 
 	numIn := fn.Type().NumIn()
@@ -48,7 +49,7 @@ func tryWrap(fn reflect.Value) func(...reflect.Value) func(...reflect.Value) (er
 	numOut := fn.Type().NumOut()
 	return func(args ...reflect.Value) func(...reflect.Value) (err error) {
 		if !isVariadic && numIn != len(args) || isVariadic && len(args) < numIn-1 {
-			logger.Fatalf("func %s input params not match,func(%d,%d)", fn.Type(), numIn, len(args))
+			xerror.PanicF(ErrInputParamsNotMatch, "func: %s, func(%d,%d)", fn.Type(), numIn, len(args))
 		}
 
 		for i, k := range args {
@@ -80,11 +81,11 @@ func tryWrap(fn reflect.Value) func(...reflect.Value) func(...reflect.Value) (er
 			_c := fn.Call(args)
 			if len(cfn) > 0 && cfn[0].IsValid() && !cfn[0].IsZero() {
 				if cfn[0].Type().NumIn() != numOut {
-					logger.Fatalf("callback func input num and output num not match[%d]<->[%d]", cfn[0].Type().NumIn(), fn.Type().NumOut())
+					xerror.PanicF(ErrInputOutputParamsNotMatch, "[%d]<->[%d]", cfn[0].Type().NumIn(), fn.Type().NumOut())
 				}
 
 				if cfn[0].Type().NumIn() != 0 && cfn[0].Type().In(0) != fn.Type().Out(0) {
-					logger.Fatalf("callback func out type error [%s]<->[%s]", cfn[0].Type().In(0), fn.Type().Out(0))
+					xerror.PanicF(ErrFuncOutputTypeNotMatch, "[%s]<->[%s]", cfn[0].Type().In(0), fn.Type().Out(0))
 				}
 				cfn[0].Call(_c)
 			}
@@ -216,7 +217,8 @@ func TimeoutWith(dur time.Duration, fn func()) error {
 
 func CostWith(fn func()) (dur time.Duration) {
 	if fn == nil {
-		panic(ErrParamIsNil)
+		xerror.Panic(ErrParamIsNil)
+		return
 	}
 
 	defer func(start time.Time) {
