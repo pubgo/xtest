@@ -211,3 +211,24 @@ func TestTimeoutWith(t *testing.T) {
 		fn.Do()
 	})
 }
+
+func TestInErrs(t *testing.T) {
+	Convey("InErrs", t, func() {
+		fn := TestFuncWith(func(d error, ds ...error) {
+			Convey(fmt.Sprint("d=", d, "  ds=", ds), func() {
+				defer xerror.RespExit()
+				InErrs(d, ds...)
+			})
+		})
+		fn.In(ErrParamIsNil)
+		fn.In(
+			ErrParamIsNil,
+			ErrParamTypeNotFunc,
+		)
+		fn.In(
+			ErrParamIsNil,
+			ErrParamTypeNotFunc,
+		)
+		fn.Do()
+	})
+}

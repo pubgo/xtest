@@ -53,9 +53,17 @@ func tryWrap(fn reflect.Value) func(...reflect.Value) func(...reflect.Value) (er
 		}
 
 		for i, k := range args {
-			if !k.IsValid() || k.IsZero() {
+			if !k.IsValid() {
 				args[i] = reflect.New(fn.Type().In(i)).Elem()
 				continue
+			}
+
+			switch k.Kind() {
+			case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice, reflect.UnsafePointer:
+				if k.IsNil() {
+					args[i] = reflect.New(fn.Type().In(i)).Elem()
+					continue
+				}
 			}
 
 			if isVariadic {
