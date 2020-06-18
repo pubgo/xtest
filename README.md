@@ -143,7 +143,7 @@ func (t *xtestFixture) TestTry() {
 
 func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
-	fn := xtest.TestFuncWith(func(dur time.Duration, fn func()) error {
+	fn := xtest.TestFuncWith(func(dur time.Duration, fn func())  {
 		err := xtest.TimeoutWith(dur, fn)
 		xtest.AssertErrs(err, nil, xtest.ErrParamIsNil, xtest.ErrFuncTimeout, xtest.ErrDurZero, err1)
 
@@ -155,7 +155,6 @@ func (t *xtestFixture) TestTimeoutWith() {
 		case xtest.ErrDurZero:
 			t.So(dur, should.BeLessThan, 0)
 		}
-		return err
 	})
 	fn.In(time.Duration(-1), time.Millisecond*10)
 	fn.In(
