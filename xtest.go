@@ -113,7 +113,7 @@ func (t *xtest) In(args ...interface{}) {
 func (t *xtest) Do() {
 	wfn := Wrap(t.fn)
 	for _, param := range t.params {
-		xerror.Panic(wfn(param...)())
+		xerror.Exit(wfn(param...)())
 	}
 	return
 }
