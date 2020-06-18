@@ -1,12 +1,16 @@
 
+.PHONY: test_cover
+test_cover:
+	@go test -timeout=1s -v -race -cover -coverprofile=out.out ./...
+
 .PHONY: test
-test:
-	@go test -timeout=1s -race -cover -coverprofile=out.out ./...
+test:test_cover
+	@echo "\n"
 	@go tool cover -func=out.out
 
 .PHONY: test_html
-test_html:
-	@go test -timeout=1s -race -cover -coverprofile=out.out ./...
+test_html:test_cover
+	@echo "\n"
 	@go tool cover -html=out.out
 
 .PHONY: test_bench

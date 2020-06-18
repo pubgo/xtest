@@ -108,6 +108,19 @@ func valuePut(v []reflect.Value) {
 	_valuePool.Put(v[:0])
 }
 
+func FuncSprint(args ...interface{}) string {
+	if len(args) == 0 {
+		return ""
+	}
+
+	fn := args[0]
+	if fn == nil || !reflect.ValueOf(fn).IsValid() || reflect.ValueOf(fn).IsNil() {
+		return "nil"
+	}
+
+	return fmt.Sprintf("[%d][%s]", reflect.ValueOf(fn).Pointer(), reflect.TypeOf(fn).String())
+}
+
 func SliceOf(args ...interface{}) []interface{} {
 	return args
 }
