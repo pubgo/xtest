@@ -72,7 +72,7 @@ func tryWrap(fn reflect.Value) func(...reflect.Value) func(...reflect.Value) (er
 					case error:
 						err = err1
 					default:
-						err = fmt.Errorf("%s: args: %#v", err1, args)
+						err = fmt.Errorf("%s -> [func: %s] [input: %s]", err1, fn.String(), args)
 					}
 				}
 			}()
