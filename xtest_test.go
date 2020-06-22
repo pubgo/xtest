@@ -54,7 +54,7 @@ func TestRangeString(t *testing.T) {
 	Convey("RangeString", t, func() {
 		fn := TestFuncWith(func(min, max int) {
 			Convey(fmt.Sprint("min=", min, "  max=", max), func() {
-				defer xerror.Resp(func(err xerror.XRErr) {
+				defer xerror.Resp(func(err xerror.XErr) {
 					switch err.Error() {
 					case "invalid argument to Intn", "runtime error: makeslice: len out of range":
 						So(err, ShouldNotEqual, "")
@@ -73,29 +73,9 @@ func TestRangeString(t *testing.T) {
 	})
 }
 
-func (t *xtestFixture) TestMockRegister() {
-	fn := TestFuncWith(func(fns ...interface{}) {
-		defer xerror.Resp(func(err xerror.XRErr) {
-			switch err := err.Unwrap(); err {
-			case ErrParamIsNil, ErrParamTypeNotFunc:
-			default:
-				panic(err)
-			}
-		})
-
-		MockRegister(fns...)
-	})
-	fn.In(
-		nil,
-		"hello",
-		func() {},
-	)
-	fn.Do()
-}
-
 func (t *xtestFixture) TestFuncCost() {
 	fn := TestFuncWith(func(fn func()) {
-		defer xerror.Resp(func(err xerror.XRErr) {
+		defer xerror.Resp(func(err xerror.XErr) {
 			switch err := err.Unwrap(); err {
 			case ErrParamIsNil:
 			default:
@@ -207,27 +187,6 @@ func TestTimeoutWith(t *testing.T) {
 			func() {
 				panic(err2)
 			},
-		)
-		fn.Do()
-	})
-}
-
-func TestInErrs(t *testing.T) {
-	Convey("InErrs", t, func() {
-		fn := TestFuncWith(func(d error, ds ...error) {
-			Convey(fmt.Sprint("d=", d, "  ds=", ds), func() {
-				defer xerror.RespExit()
-				InErrs(d, ds...)
-			})
-		})
-		fn.In(ErrParamIsNil)
-		fn.In(
-			ErrParamIsNil,
-			ErrParamTypeNotFunc,
-		)
-		fn.In(
-			ErrParamIsNil,
-			ErrParamTypeNotFunc,
 		)
 		fn.Do()
 	})

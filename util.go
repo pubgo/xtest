@@ -205,7 +205,7 @@ func Try(fn func()) (e error) {
 
 func TimeoutWith(dur time.Duration, fn func()) error {
 	if dur < 0 {
-		return ErrDurZero
+		return xerror.WrapF(ErrDurZero, "dur: %s", dur)
 	}
 
 	if fn == nil {
@@ -214,16 +214,7 @@ func TimeoutWith(dur time.Duration, fn func()) error {
 
 	var ch = make(chan error, 1)
 	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				switch err := err.(type) {
-				case error:
-					ch <- err
-				default:
-					ch <- fmt.Errorf("%s", err)
-				}
-			}
-		}()
+		defer xerror.RespChanErr(ch)
 		fn()
 		ch <- nil
 	}()
@@ -232,7 +223,7 @@ func TimeoutWith(dur time.Duration, fn func()) error {
 	case err := <-ch:
 		return err
 	case <-time.After(dur):
-		return ErrFuncTimeout
+		return xerror.Wrap(ErrFuncTimeout)
 	}
 }
 
