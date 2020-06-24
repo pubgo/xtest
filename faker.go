@@ -29,5 +29,8 @@ func RangeDur(min, max time.Duration) time.Duration {
 // Range ...
 func Range(min, max int) int {
 	rand.Seed(time.Now().UnixNano())
+	if min >= max {
+		return max
+	}
 	return min + rand.Intn(max-min)
 }
