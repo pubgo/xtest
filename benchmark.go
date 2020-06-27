@@ -96,9 +96,11 @@ func (b *B) ReportAllocs() {
 func (b *B) launch() {
 	runtime.GC()
 	b.ResetTimer()
+	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		b.benchFunc(b)
 	}
+	b.StopTimer()
 	b.result = BenchmarkResult{b.N, b.duration, b.bytes, b.netAllocs, b.netBytes, b.extra}
 }
 
@@ -245,7 +247,6 @@ func Benchmark(n int, f func(b *B)) BenchmarkResult {
 	b := &B{
 		benchFunc: f,
 		N:         n,
-		timerOn:   true,
 	}
 	b.launch()
 	return b.result
