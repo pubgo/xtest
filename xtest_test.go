@@ -96,16 +96,16 @@ func (t *xtestFixture) TestFuncCost() {
 func (t *xtestFixture) TestTry() {
 	e := errors.New("error")
 	fn := TestFuncWith(func(fn func()) {
-		defer xerror.RespExit()
-
-		switch err := Try(fn); err {
-		case ErrParamIsNil:
-			t.So(fn, ShouldBeNil)
-		case nil:
-		case e:
-		default:
-			xerror.Exit(err)
-		}
+		defer xerror.Resp(func(err xerror.XErr) {
+			switch err.Unwrap() {
+			case ErrParamIsNil:
+				t.So(fn, ShouldBeNil)
+			case e:
+			default:
+				xerror.Exit(err)
+			}
+		})
+		xerror.Panic(Try(fn))
 	})
 	fn.In(
 		nil,
@@ -118,20 +118,22 @@ func (t *xtestFixture) TestTry() {
 func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
 	fn := TestFuncWith(func(dur time.Duration, fn func()) {
-		defer xerror.RespExit()
+		defer xerror.Resp(func(err xerror.XErr) {
+			switch err.Unwrap() {
+			case ErrParamIsNil:
+				t.So(fn, ShouldBeNil)
+			case ErrFuncTimeout:
+				t.So(CostWith(fn), should.BeGreaterThan, dur)
+			case ErrDurZero:
+				t.So(dur, should.BeLessThan, 0)
+			case err1:
+			default:
+				xerror.Exit(err)
+			}
+		})
 
-		switch err := TimeoutWith(dur, fn); err {
-		case ErrParamIsNil:
-			t.So(fn, ShouldBeNil)
-		case ErrFuncTimeout:
-			t.So(CostWith(fn), should.BeGreaterThan, dur)
-		case ErrDurZero:
-			t.So(dur, should.BeLessThan, 0)
-		case err1:
-		case nil:
-		default:
-			xerror.Exit(err)
-		}
+		xerror.Panic(TimeoutWith(dur, fn))
+
 	})
 	fn.In(time.Duration(-1), time.Millisecond*10)
 	fn.In(
@@ -153,25 +155,26 @@ func TestTimeoutWith(t *testing.T) {
 	Convey("TimeoutWith", t, func() {
 		fn := TestFuncWith(func(dur time.Duration, fn func()) {
 			Convey(fmt.Sprint("dur=", dur, "  fn=", FuncSprint(fn)), func() {
-				defer xerror.RespExit()
+				defer xerror.Resp(func(err xerror.XErr) {
+					switch err.Unwrap() {
+					case ErrParamIsNil:
+						So(fn, ShouldBeNil)
+					case ErrFuncTimeout:
+						So(CostWith(fn), should.BeGreaterThan, dur)
+					case ErrDurZero:
+						So(dur, should.BeLessThan, 0)
+					case err1:
+						So(nil, ShouldBeNil)
+					default:
+						if err.Error() == err2 {
+							So(nil, ShouldBeNil)
+							return
+						}
+						xerror.Exit(err)
+					}
+				})
 
-				err := TimeoutWith(dur, fn)
-				switch {
-				case err == ErrParamIsNil:
-					So(fn, ShouldBeNil)
-				case err == ErrFuncTimeout:
-					So(CostWith(fn), should.BeGreaterThan, dur)
-				case err == ErrDurZero:
-					So(dur, should.BeLessThan, 0)
-				case err == err1:
-					So(nil, ShouldBeNil)
-				case err == nil:
-					So(nil, ShouldBeNil)
-				case err.Error() == err2:
-					So(nil, ShouldBeNil)
-				default:
-					xerror.Exit(err)
-				}
+				xerror.Panic(TimeoutWith(dur, fn))
 			})
 		})
 		fn.In(time.Duration(-1), time.Millisecond*10)
