@@ -21,7 +21,6 @@ type xtestFixture struct {
 }
 
 func (t *xtestFixture) TestTick() {
-
 	fn := TestFuncWith(func(args ...interface{}) {
 		defer xerror.RespExit()
 

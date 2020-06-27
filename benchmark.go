@@ -245,6 +245,7 @@ func Benchmark(n int, f func(b *B)) BenchmarkResult {
 	b := &B{
 		benchFunc: f,
 		N:         n,
+		timerOn:   true,
 	}
 	b.launch()
 	return b.result
