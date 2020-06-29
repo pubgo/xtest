@@ -13,6 +13,7 @@ import (
 )
 
 func TestXTest(t *testing.T) {
+	defer Check(t)
 	gunit.Run(new(xtestFixture), t, gunit.Options.AllSequential())
 }
 
