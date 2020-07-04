@@ -194,3 +194,15 @@ func TestTimeoutWith(t *testing.T) {
 		fn.Do()
 	})
 }
+
+func TestBen(t *testing.T) {
+	PrintMemStats()
+	bm := BenchmarkParallel(1000, 10).
+		MemProfile("mem.out").
+		CpuProfile("cpu.out").
+		Do(func(b *B) {
+			time.Sleep(time.Millisecond)
+		})
+	PrintMemStats()
+	fmt.Println(bm.allocBytes, bm.T, bm.constBytes)
+}
