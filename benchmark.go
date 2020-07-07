@@ -102,7 +102,6 @@ func (b *B) Do(fn func(b *B)) *B {
 func (b *B) StartTimer() {
 	if !b.timerOn {
 		runtime.ReadMemStats(&b.startStats)
-		fmt.Println(b.startStats.HeapSys, b.stopStats.HeapSys)
 		b.constBytes = int(b.startStats.HeapSys - b.stopStats.HeapSys)
 		b.start = time.Now()
 		b.timerOn = true
