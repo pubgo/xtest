@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/smartystreets/assertions/should"
-	. "github.com/smartystreets/goconvey/convey"
+	convey "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/gunit"
 )
 
@@ -51,20 +51,20 @@ func (t *xtestFixture) TestCount() {
 }
 
 func TestRangeString(t *testing.T) {
-	Convey("RangeString", t, func() {
+	convey.Convey("RangeString", t, func() {
 		fn := TestFuncWith(func(min, max int) {
-			Convey(fmt.Sprint("min=", min, "  max=", max), func() {
+			convey.Convey(fmt.Sprint("min=", min, "  max=", max), func() {
 				defer xerror.Resp(func(err xerror.XErr) {
 					switch err.Error() {
 					case "invalid argument to Intn", "runtime error: makeslice: len out of range":
-						So(err, ShouldNotEqual, "")
+						convey.So(err, convey.ShouldNotEqual, "")
 					default:
 						xerror.Exit(err)
 					}
 				})
 
 				dt := RangeString(min, max)
-				So(len(dt) < max && len(dt) >= min, ShouldBeTrue)
+				convey.So(len(dt) < max && len(dt) >= min, convey.ShouldBeTrue)
 			})
 		})
 		fn.In(-10, 0, 10)
@@ -99,7 +99,7 @@ func (t *xtestFixture) TestTry() {
 		defer xerror.Resp(func(err xerror.XErr) {
 			switch err.Unwrap() {
 			case ErrParamIsNil:
-				t.So(fn, ShouldBeNil)
+				t.So(fn, convey.ShouldBeNil)
 			case e:
 			default:
 				xerror.Exit(err)
@@ -121,7 +121,7 @@ func (t *xtestFixture) TestTimeoutWith() {
 		defer xerror.Resp(func(err xerror.XErr) {
 			switch err.Unwrap() {
 			case ErrParamIsNil:
-				t.So(fn, ShouldBeNil)
+				t.So(fn, convey.ShouldBeNil)
 			case ErrFuncTimeout:
 				t.So(CostWith(fn), should.BeGreaterThan, dur)
 			case ErrDurZero:
@@ -152,22 +152,22 @@ func (t *xtestFixture) TestTimeoutWith() {
 func TestTimeoutWith(t *testing.T) {
 	var err1 = errors.New("hello")
 	var err2 = "hello"
-	Convey("TimeoutWith", t, func() {
+	convey.Convey("TimeoutWith", t, func() {
 		fn := TestFuncWith(func(dur time.Duration, fn func()) {
-			Convey(fmt.Sprint("dur=", dur, "  fn=", FuncSprint(fn)), func() {
+			convey.Convey(fmt.Sprint("dur=", dur, "  fn=", FuncSprint(fn)), func() {
 				defer xerror.Resp(func(err xerror.XErr) {
 					switch err.Unwrap() {
 					case ErrParamIsNil:
-						So(fn, ShouldBeNil)
+						convey.So(fn, convey.ShouldBeNil)
 					case ErrFuncTimeout:
-						So(CostWith(fn), should.BeGreaterThan, dur)
+						convey.So(CostWith(fn), should.BeGreaterThan, dur)
 					case ErrDurZero:
-						So(dur, should.BeLessThan, 0)
+						convey.So(dur, should.BeLessThan, 0)
 					case err1:
-						So(nil, ShouldBeNil)
+						convey.So(nil, convey.ShouldBeNil)
 					default:
 						if err.Error() == err2 {
-							So(nil, ShouldBeNil)
+							convey.So(nil, convey.ShouldBeNil)
 							return
 						}
 						xerror.Exit(err)
@@ -197,12 +197,10 @@ func TestTimeoutWith(t *testing.T) {
 
 func TestBen(t *testing.T) {
 	PrintMemStats()
-	bm := BenchmarkParallel(1000, 10).
-		MemProfile("mem.out").
-		CpuProfile("cpu.out").
+	bm := Benchmark(1000).
 		Do(func(b *B) {
 			time.Sleep(time.Millisecond)
 		})
 	PrintMemStats()
-	fmt.Println(bm.allocBytes, bm.T, bm.constBytes)
+	fmt.Println(bm)
 }

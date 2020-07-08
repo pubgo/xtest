@@ -8,39 +8,21 @@ import (
 	"runtime/pprof"
 	"sync"
 	"time"
-	"unsafe"
 )
 
-var defaultMemStats = initStats()
-
-const memStatsSize = uint64(unsafe.Sizeof(runtime.MemStats{}))
-
-func initStats() (m runtime.MemStats) {
-	runtime.ReadMemStats(&m)
-	return
-}
-
 type B struct {
-	startStats runtime.MemStats
-	stopStats  runtime.MemStats
 	memProfile string
 	cpuProfile string
-	N          int
-	M          uint32
+	n          int
+	m          uint32
 	timerOn    bool
-	constBytes int
-	allocBytes int
 	start      time.Time
 	duration   time.Duration
-	T          string
+	t          string
 }
 
 func (b *B) String() string {
-	return b.T
-}
-
-func (b *B) AllocBytes() uint64{
-	return uint64(b.allocBytes)
+	return b.t
 }
 
 func (b *B) MemProfile(file string) *B {
@@ -60,35 +42,33 @@ func (b *B) Do(fn func(b *B)) *B {
 		defer pprof.StopCPUProfile()
 	}
 	b.StartTimer()
-	if b.M > 0 {
+	if b.m > 0 {
 		func() {
 			var g sync.WaitGroup
 			m := 0
-			for i := 0; i < b.N; i++ {
+			for i := 0; i < b.n; i++ {
 				g.Wait()
-				for j := uint32(0); j < b.M; j++ {
+				for j := uint32(0); j < b.m; j++ {
 					g.Add(1)
 					go func() {
 						fn(b)
 						g.Done()
 					}()
 					m++
-					if m == b.N {
+					if m == b.n {
 						return
 					}
 				}
 			}
 		}()
-
 	} else {
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < b.n; i++ {
 			fn(b)
 		}
 	}
 	b.StopTimer()
-	b.allocBytes -= b.constBytes
 	b.duration -= time.Duration(float64(b.duration) / 10 * 2.1)
-	b.T = fmt.Sprintf("%0.2f ns/op", float64(b.duration)/float64(b.N))
+	b.t = fmt.Sprintf("%0.2f ns/op", float64(b.duration)/float64(b.n))
 
 	if b.memProfile != "" {
 		xerror.Exit(pprof.WriteHeapProfile(xerror.PanicFile(os.Create(b.memProfile))))
@@ -101,8 +81,6 @@ func (b *B) Do(fn func(b *B)) *B {
 // a call to StopTimer.
 func (b *B) StartTimer() {
 	if !b.timerOn {
-		runtime.ReadMemStats(&b.startStats)
-		b.constBytes = int(b.startStats.HeapSys - b.stopStats.HeapSys)
 		b.start = time.Now()
 		b.timerOn = true
 	}
@@ -114,31 +92,21 @@ func (b *B) StartTimer() {
 func (b *B) StopTimer() {
 	if b.timerOn {
 		b.duration += time.Since(b.start)
-		runtime.ReadMemStats(&b.stopStats)
-		b.allocBytes += int(b.startStats.HeapSys - b.stopStats.HeapSys - memStatsSize)
 		b.timerOn = false
 		b.start = time.Time{}
 	}
 }
 
-// Benchmark benchmarks a single function. It is useful for creating
-// custom benchmarks that do not use the "go test" command.
-//
-// If f depends on testing flags, then Init must be used to register
-// those flags before calling Benchmark and before calling flag.Parse.
-//
-// If f calls Run, the result will be an estimate of running all its
-// subbenchmarks that don't call Run in sequence in a single benchmark.
+// BenchmarkParallel
 func BenchmarkParallel(n int, m int) *B {
 	b := Benchmark(n)
-	b.M = uint32(m)
+	b.m = uint32(m)
 	return b
 }
 
 func Benchmark(n int) *B {
 	return &B{
-		N:         n,
-		stopStats: defaultMemStats,
-		start:     time.Now(),
+		n:     n,
+		start: time.Now(),
 	}
 }
