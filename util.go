@@ -215,7 +215,9 @@ func TimeoutWith(dur time.Duration, fn func()) error {
 
 	var ch = make(chan error, 1)
 	go func() {
-		defer xerror.RespChanErr(ch)
+		defer xerror.Resp(func(err xerror.XErr) {
+			ch <- err
+		})
 		fn()
 		ch <- nil
 	}()
