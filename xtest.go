@@ -36,7 +36,7 @@ func (t *xtest) Do() {
 
 func TestFuncWith(fn interface{}) *xtest {
 	if fn == nil {
-		xerror.Panic(ErrParamIsNil)
+		xerror.Exit(ErrParamIsNil)
 	}
 
 	if reflect.TypeOf(fn).Kind() != reflect.Func {

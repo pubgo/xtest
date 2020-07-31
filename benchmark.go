@@ -10,7 +10,19 @@ import (
 	"time"
 )
 
-type B struct {
+type B interface {
+	StartTimer()
+	StopTimer()
+}
+
+type IBenchmark interface {
+	CpuProfile(file string) IBenchmark
+	MemProfile(file string) IBenchmark
+	Do(fn func(b B)) IBenchmark
+	String() string
+}
+
+type benchmark struct {
 	memProfile string
 	cpuProfile string
 	n          int
@@ -21,21 +33,21 @@ type B struct {
 	t          string
 }
 
-func (b *B) String() string {
+func (b *benchmark) String() string {
 	return b.t
 }
 
-func (b *B) MemProfile(file string) *B {
+func (b *benchmark) MemProfile(file string) IBenchmark {
 	b.memProfile = file
 	return b
 }
 
-func (b *B) CpuProfile(file string) *B {
+func (b *benchmark) CpuProfile(file string) IBenchmark {
 	b.cpuProfile = file
 	return b
 }
 
-func (b *B) Do(fn func(b *B)) *B {
+func (b *benchmark) Do(fn func(b B)) IBenchmark {
 	runtime.GC()
 	if b.cpuProfile != "" {
 		xerror.Exit(pprof.StartCPUProfile(xerror.PanicFile(os.Create(b.cpuProfile))))
@@ -79,7 +91,7 @@ func (b *B) Do(fn func(b *B)) *B {
 // StartTimer starts timing a test. This function is called automatically
 // before a benchmark starts, but it can also be used to resume timing after
 // a call to StopTimer.
-func (b *B) StartTimer() {
+func (b *benchmark) StartTimer() {
 	if !b.timerOn {
 		b.start = time.Now()
 		b.timerOn = true
@@ -89,7 +101,7 @@ func (b *B) StartTimer() {
 // StopTimer stops timing a test. This can be used to pause the timer
 // while performing complex initialization that you don't
 // want to measure.
-func (b *B) StopTimer() {
+func (b *benchmark) StopTimer() {
 	if b.timerOn {
 		b.duration += time.Since(b.start)
 		b.timerOn = false
@@ -98,14 +110,16 @@ func (b *B) StopTimer() {
 }
 
 // BenchmarkParallel
-func BenchmarkParallel(n int, m int) *B {
-	b := Benchmark(n)
-	b.m = uint32(m)
-	return b
+func BenchmarkParallel(n int, m int) IBenchmark {
+	return &benchmark{
+		m:     uint32(m),
+		n:     n,
+		start: time.Now(),
+	}
 }
 
-func Benchmark(n int) *B {
-	return &B{
+func Benchmark(n int) IBenchmark {
+	return &benchmark{
 		n:     n,
 		start: time.Now(),
 	}

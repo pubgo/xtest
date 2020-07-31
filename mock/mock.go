@@ -3,6 +3,7 @@ package mock
 import (
 	fuzz "github.com/google/gofuzz"
 	"github.com/pubgo/xerror"
+	"github.com/pubgo/xtest"
 	"reflect"
 )
 
@@ -12,11 +13,11 @@ var fns []interface{}
 func MockRegister(fns ...interface{}) {
 	for _, fn := range fns {
 		if fn == nil {
-			xerror.Panic(ErrParamIsNil)
+			xerror.Panic(xtest.ErrParamIsNil)
 		}
 
 		if reflect.TypeOf(fn).Kind() != reflect.Func {
-			xerror.Panic(ErrParamTypeNotFunc)
+			xerror.Panic(xtest.ErrParamTypeNotFunc)
 		}
 
 		fns = append(fns, fn)
@@ -42,7 +43,7 @@ func Mock(args ...interface{}) {
 
 	for i := range args {
 		if args[i] == nil {
-			xerror.Panic(ErrForeachParameterNil)
+			xerror.Panic(xtest.ErrForeachParameterNil)
 		}
 
 		switch reflect.TypeOf(args[i]).Kind() {

@@ -117,12 +117,7 @@ func valuePut(v []reflect.Value) {
 	_valuePool.Put(v[:0])
 }
 
-func FuncSprint(args ...interface{}) string {
-	if len(args) == 0 {
-		return ""
-	}
-
-	fn := args[0]
+func FuncSprint(fn interface{}) string {
 	if fn == nil || !reflect.ValueOf(fn).IsValid() || reflect.ValueOf(fn).IsNil() {
 		return "nil"
 	}
@@ -187,7 +182,8 @@ func Count(n int) <-chan int {
 
 func Try(fn func()) (e error) {
 	if fn == nil {
-		return ErrParamIsNil
+		xerror.Exit(ErrParamIsNil)
+		return
 	}
 
 	defer func() {
@@ -196,10 +192,11 @@ func Try(fn func()) (e error) {
 			case error:
 				e = err
 			default:
-				e = fmt.Errorf("%s", err)
+				e = fmt.Errorf("%+v", err)
 			}
 		}
 	}()
+
 	fn()
 	return
 }
@@ -244,7 +241,7 @@ func CostWith(fn func()) (dur time.Duration) {
 	return
 }
 
-func PrintMemStats() {
+func MemStatsPrint() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	fmt.Printf("HeapAlloc = %v HeapIdel= %v HeapSys = %v  HeapReleased = %v\n", m.HeapAlloc/1024, m.HeapIdle/1024, m.HeapSys/1024, m.HeapReleased/1024)

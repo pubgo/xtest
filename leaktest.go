@@ -1,12 +1,3 @@
-// Copyright 2013 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// Package leaktest provides tools to detect leaked goroutines in tests.
-// To use it, call "defer leaktest.Check(t)()" at the beginning of each
-// test that may use goroutines.
-// copied out of the cockroachdb source tree with slight modifications to be
-// more re-useable
 package xtest
 
 import (

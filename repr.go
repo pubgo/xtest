@@ -1,6 +1,5 @@
 package xtest
 
-
 import (
 	"bytes"
 	"fmt"
@@ -44,25 +43,25 @@ var (
 )
 
 // Default prints to os.Stdout with two space indentation.
-var Default = New(os.Stdout, Indent("  "))
+var DefaultPrinter = NewPrinter(os.Stdout, WithIndent("  "))
 
 // An Option modifies the default behaviour of a Printer.
 type Option func(o *Printer)
 
 // Indent output by this much.
-func Indent(indent string) Option { return func(o *Printer) { o.indent = indent } }
+func WithIndent(indent string) Option { return func(o *Printer) { o.indent = indent } }
 
 // NoIndent disables indenting.
-func NoIndent() Option { return Indent("") }
+func WithNoIndent() Option { return WithIndent("") }
 
 // OmitEmpty sets whether empty field members should be omitted from output.
-func OmitEmpty(omitEmpty bool) Option { return func(o *Printer) { o.omitEmpty = omitEmpty } }
+func WithOmitEmpty(omitEmpty bool) Option { return func(o *Printer) { o.omitEmpty = omitEmpty } }
 
 // IgnoreGoStringer disables use of the .GoString() method.
-func IgnoreGoStringer() Option { return func(o *Printer) { o.ignoreGoStringer = true } }
+func WithIgnoreGoStringer() Option { return func(o *Printer) { o.ignoreGoStringer = true } }
 
 // Hide excludes the given types from representation, instead just printing the name of the type.
-func Hide(ts ...interface{}) Option {
+func WithHide(ts ...interface{}) Option {
 	return func(o *Printer) {
 		for _, t := range ts {
 			rt := reflect.Indirect(reflect.ValueOf(t)).Type()
@@ -85,7 +84,7 @@ type Printer struct {
 }
 
 // New creates a new Printer on w with the given Options.
-func New(w io.Writer, options ...Option) *Printer {
+func NewPrinter(w io.Writer, options ...Option) *Printer {
 	p := &Printer{
 		w:         w,
 		indent:    "  ",
@@ -120,13 +119,14 @@ func (p *Printer) Print(vs ...interface{}) {
 		}
 		p.reprValue(map[reflect.Value]bool{}, reflect.ValueOf(v), "")
 	}
+	fmt.Println( "")
 }
 
 // Println prints each value on a new line.
 func (p *Printer) Println(vs ...interface{}) {
 	for i, v := range vs {
 		if i > 0 {
-			fmt.Fprint(p.w, " ")
+			fmt.Fprintln(p.w, " ")
 		}
 		p.reprValue(map[reflect.Value]bool{}, reflect.ValueOf(v), "")
 	}
@@ -275,11 +275,11 @@ func (p *Printer) reprValue(seen map[reflect.Value]bool, v reflect.Value, indent
 	}
 }
 
-// String returns a string representing v.
-func String(v interface{}, options ...Option) string {
+// DebugS returns a string representing v.
+func DebugS(v interface{}, options ...Option) string {
 	w := bytes.NewBuffer(nil)
-	options = append([]Option{NoIndent()}, options...)
-	p := New(w, options...)
+	options = append([]Option{WithNoIndent()}, options...)
+	p := NewPrinter(w, options...)
 	p.Print(v)
 	return w.String()
 }
@@ -295,16 +295,16 @@ func extractOptions(vs ...interface{}) (args []interface{}, options []Option) {
 	return
 }
 
-// Println prints v to os.Stdout, one per line.
-func Println(vs ...interface{}) {
+// Debugln prints v to os.Stdout, one per line.
+func Debugln(vs ...interface{}) {
 	args, options := extractOptions(vs...)
-	New(os.Stdout, options...).Println(args...)
+	NewPrinter(os.Stdout, options...).Println(args...)
 }
 
-// Print writes a representation of v to os.Stdout, separated by spaces.
-func Print(vs ...interface{}) {
+// Debug writes a representation of v to os.Stdout, separated by spaces.
+func Debug(vs ...interface{}) {
 	args, options := extractOptions(vs...)
-	New(os.Stdout, options...).Print(args...)
+	NewPrinter(os.Stdout, options...).Print(args...)
 }
 
 func isZero(v reflect.Value) bool {

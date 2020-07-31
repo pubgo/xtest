@@ -63,7 +63,7 @@ func TestRangeString(t *testing.T) {
 					}
 				})
 
-				dt := RangeString(min, max)
+				dt := MockString(min, max)
 				convey.So(len(dt) < max && len(dt) >= min, convey.ShouldBeTrue)
 			})
 		})
@@ -119,7 +119,7 @@ func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
 	fn := TestFuncWith(func(dur time.Duration, fn func()) {
 		defer xerror.Resp(func(err xerror.XErr) {
-			switch err.Unwrap() {
+			switch err := errors.Unwrap(err); err {
 			case ErrParamIsNil:
 				t.So(fn, convey.ShouldBeNil)
 			case ErrFuncTimeout:
@@ -131,9 +131,7 @@ func (t *xtestFixture) TestTimeoutWith() {
 				xerror.Exit(err)
 			}
 		})
-
 		xerror.Panic(TimeoutWith(dur, fn))
-
 	})
 	fn.In(time.Duration(-1), time.Millisecond*10)
 	fn.In(
@@ -196,11 +194,12 @@ func TestTimeoutWith(t *testing.T) {
 }
 
 func TestBen(t *testing.T) {
-	PrintMemStats()
+	MemStatsPrint()
 	bm := Benchmark(1000).
 		Do(func(b *B) {
 			time.Sleep(time.Millisecond)
 		})
-	PrintMemStats()
+	MemStatsPrint()
 	fmt.Println(bm)
+	Debugln()
 }
