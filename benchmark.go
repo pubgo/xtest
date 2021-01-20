@@ -2,12 +2,13 @@ package xtest
 
 import (
 	"fmt"
-	"github.com/pubgo/xerror"
 	"os"
 	"runtime"
 	"runtime/pprof"
 	"sync"
 	"time"
+
+	"github.com/pubgo/xerror"
 )
 
 type B interface {

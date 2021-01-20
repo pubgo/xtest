@@ -196,7 +196,7 @@ func TestTimeoutWith(t *testing.T) {
 func TestBen(t *testing.T) {
 	MemStatsPrint()
 	bm := Benchmark(1000).
-		Do(func(b *B) {
+		Do(func(b B) {
 			time.Sleep(time.Millisecond)
 		})
 	MemStatsPrint()
