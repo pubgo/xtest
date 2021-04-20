@@ -3,17 +3,17 @@ package xtest
 import (
 	"errors"
 	"fmt"
-	"github.com/pubgo/xerror"
 	"testing"
 	"time"
 
+	"github.com/pubgo/xerror"
 	"github.com/smartystreets/assertions/should"
 	convey "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/gunit"
 )
 
 func TestXTest(t *testing.T) {
-	defer Check(t)
+	defer CheckLeak(t)
 	gunit.Run(new(xtestFixture), t, gunit.Options.AllSequential())
 }
 
@@ -22,7 +22,7 @@ type xtestFixture struct {
 }
 
 func (t *xtestFixture) TestTick() {
-	fn := TestFuncWith(func(args ...interface{}) {
+	fn := TestFunc(func(args ...interface{}) {
 		defer xerror.RespExit()
 
 		i := 0
@@ -37,7 +37,7 @@ func (t *xtestFixture) TestTick() {
 }
 
 func (t *xtestFixture) TestCount() {
-	fn := TestFuncWith(func(n int) {
+	fn := TestFunc(func(n int) {
 		defer xerror.RespExit()
 
 		i := 0
@@ -52,7 +52,7 @@ func (t *xtestFixture) TestCount() {
 
 func TestRangeString(t *testing.T) {
 	convey.Convey("RangeString", t, func() {
-		fn := TestFuncWith(func(min, max int) {
+		fn := TestFunc(func(min, max int) {
 			convey.Convey(fmt.Sprint("min=", min, "  max=", max), func() {
 				defer xerror.Resp(func(err xerror.XErr) {
 					switch err.Error() {
@@ -74,7 +74,7 @@ func TestRangeString(t *testing.T) {
 }
 
 func (t *xtestFixture) TestFuncCost() {
-	fn := TestFuncWith(func(fn func()) {
+	fn := TestFunc(func(fn func()) {
 		defer xerror.Resp(func(err xerror.XErr) {
 			switch err := err.Unwrap(); err {
 			case ErrParamIsNil:
@@ -95,7 +95,7 @@ func (t *xtestFixture) TestFuncCost() {
 
 func (t *xtestFixture) TestTry() {
 	e := errors.New("error")
-	fn := TestFuncWith(func(fn func()) {
+	fn := TestFunc(func(fn func()) {
 		defer xerror.Resp(func(err xerror.XErr) {
 			switch err.Unwrap() {
 			case ErrParamIsNil:
@@ -117,7 +117,7 @@ func (t *xtestFixture) TestTry() {
 
 func (t *xtestFixture) TestTimeoutWith() {
 	var err1 = errors.New("hello")
-	fn := TestFuncWith(func(dur time.Duration, fn func()) {
+	fn := TestFunc(func(dur time.Duration, fn func()) {
 		defer xerror.Resp(func(err xerror.XErr) {
 			switch err := errors.Unwrap(err); err {
 			case ErrParamIsNil:
@@ -151,7 +151,7 @@ func TestTimeoutWith(t *testing.T) {
 	var err1 = errors.New("hello")
 	var err2 = "hello"
 	convey.Convey("TimeoutWith", t, func() {
-		fn := TestFuncWith(func(dur time.Duration, fn func()) {
+		fn := TestFunc(func(dur time.Duration, fn func()) {
 			convey.Convey(fmt.Sprint("dur=", dur, "  fn=", FuncSprint(fn)), func() {
 				defer xerror.Resp(func(err xerror.XErr) {
 					switch err.Unwrap() {

@@ -1,7 +1,9 @@
 package xtest
 
 import (
+	"github.com/pubgo/x/fx"
 	"github.com/pubgo/xerror"
+
 	"reflect"
 )
 
@@ -27,14 +29,15 @@ func (t *xtest) In(args ...interface{}) {
 }
 
 func (t *xtest) Do() {
-	wfn := Wrap(t.fn)
+	defer xerror.RespExit()
+
+	wfn := fx.WrapRaw(t.fn)
 	for _, param := range t.params {
-		xerror.Exit(wfn(param...)())
+		_ = wfn(param...)
 	}
-	return
 }
 
-func TestFuncWith(fn interface{}) *xtest {
+func TestFunc(fn interface{}) *xtest {
 	if fn == nil {
 		xerror.Exit(ErrParamIsNil)
 	}

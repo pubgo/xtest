@@ -105,17 +105,17 @@ type ErrorReporter interface {
 	Errorf(format string, args ...interface{})
 }
 
-// Check snapshots the currently-running goroutines and returns a
+// CheckLeak snapshots the currently-running goroutines and returns a
 // function to be run at the end of tests to see whether any
 // goroutines leaked, waiting up to 5 seconds in error conditions
-func Check(t ErrorReporter) func() {
-	return CheckTimeout(t, 5*time.Second)
+func CheckLeak(t ErrorReporter) func() {
+	return CheckLeakWithTimeout(t, 5*time.Second)
 }
 
-// CheckTimeout is the same as Check, but with a configurable timeout
-func CheckTimeout(t ErrorReporter, dur time.Duration) func() {
+// CheckLeakWithTimeout is the same as Check, but with a configurable timeout
+func CheckLeakWithTimeout(t ErrorReporter, dur time.Duration) func() {
 	ctx, cancel := context.WithCancel(context.Background())
-	fn := CheckContext(ctx, t)
+	fn := CheckLeakWithContext(ctx, t)
 	return func() {
 		timer := time.AfterFunc(dur, cancel)
 		fn()
@@ -125,9 +125,9 @@ func CheckTimeout(t ErrorReporter, dur time.Duration) func() {
 	}
 }
 
-// CheckContext is the same as Check, but uses a context.Context for
+// CheckLeakWithContext is the same as Check, but uses a context.Context for
 // cancellation and timeout control
-func CheckContext(ctx context.Context, t ErrorReporter) func() {
+func CheckLeakWithContext(ctx context.Context, t ErrorReporter) func() {
 	orig := map[uint64]bool{}
 	for _, g := range interestingGoroutines(t) {
 		fmt.Println(g.id,g.stack)

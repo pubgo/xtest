@@ -51,7 +51,7 @@ func (b *benchmark) CpuProfile(file string) IBenchmark {
 func (b *benchmark) Do(fn func(b B)) IBenchmark {
 	runtime.GC()
 	if b.cpuProfile != "" {
-		xerror.Exit(pprof.StartCPUProfile(xerror.PanicFile(os.Create(b.cpuProfile))))
+		xerror.Exit(pprof.StartCPUProfile(xerror.PanicErr(os.Create(b.cpuProfile)).(*os.File)))
 		defer pprof.StopCPUProfile()
 	}
 	b.StartTimer()
@@ -84,7 +84,7 @@ func (b *benchmark) Do(fn func(b B)) IBenchmark {
 	b.t = fmt.Sprintf("%0.2f ns/op", float64(b.duration)/float64(b.n))
 
 	if b.memProfile != "" {
-		xerror.Exit(pprof.WriteHeapProfile(xerror.PanicFile(os.Create(b.memProfile))))
+		xerror.Exit(pprof.WriteHeapProfile(xerror.PanicErr(os.Create(b.memProfile)).(*os.File)))
 	}
 	return b
 }

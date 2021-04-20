@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/dave/jennifer/jen"
-	"github.com/pubgo/xtest/cmd/internal"
 	"os"
+
+	"github.com/dave/jennifer/jen"
+	"github.com/pubgo/xtest/internal"
 )
 
 func main() {

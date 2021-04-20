@@ -9,10 +9,10 @@ package xtest
 import (
 	"errors"
 	"fmt"
-	"github.com/pubgo/xerror"
 	"testing"
 	"time"
 
+    "github.com/pubgo/xerror"
 	"github.com/smartystreets/assertions/should"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/gunit"
