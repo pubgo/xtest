@@ -2,6 +2,7 @@ package xtest
 
 import (
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -16,12 +17,14 @@ func TestXTest(t *testing.T) {
 }
 
 type xtestFixture struct {
+	dd convey.FailureMode
+	fv convey.C
 	*gunit.Fixture
 }
 
 func TestRangeString(t *testing.T) {
 	convey.Convey("RangeString", t, func() {
-		fn := TestFunc(func(min, max int) {
+		fn := TestFunc("RangeString", func(min, max int) {
 			convey.Convey(fmt.Sprint("min=", min, "  max=", max), func() {
 				defer xerror.Resp(func(err xerror.XErr) {
 					switch err.Error() {
@@ -36,8 +39,6 @@ func TestRangeString(t *testing.T) {
 				convey.So(len(dt) < max && len(dt) >= min, convey.ShouldBeTrue)
 			})
 		})
-		fn.In(-10, 0, 10)
-		fn.In(-10, 0, 10, 20)
 		fn.Do()
 	})
 }
@@ -51,4 +52,48 @@ func TestBen(t *testing.T) {
 	MemStatsPrint()
 	fmt.Println(bm)
 	Debugln()
+}
+
+var i = 1
+
+func TestExampleFixture(t *testing.T) {
+	Run(t, new(ExampleFixture))
+}
+
+type ExampleFixture struct {
+	*gunit.Fixture
+	i int
+}
+
+func (t *ExampleFixture) Teardown() {
+}
+
+func (t *ExampleFixture) GenReq() map[string]Request {
+	return map[string]Request{
+		"Hello": {
+			Gen: func(name string, name1 string) *Hello {
+				return &Hello{Name: name, HName1: name1}
+			},
+			Data: [][]interface{}{
+				{"hello", "world", "world1"},
+				{"hello", "world", "world1"},
+			},
+		},
+	}
+}
+
+func (t *ExampleFixture) Setup() {
+	t.i++
+	i++
+	log.Println("SetupStuff", t.i, i)
+}
+
+type Hello struct {
+	Name   string
+	HName1 string
+}
+
+// This is an actual test case:
+func (t *ExampleFixture) Hello(req *Hello) (*Hello, error) {
+	return req, nil
 }

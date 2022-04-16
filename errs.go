@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ErrXTest                     = xerror.New("xtest error")
+	ErrXTest                     = xerror.New("grpcTest error")
 	ErrParamIsNil                = ErrXTest.New("the parameter is nil")
 	ErrFuncTimeout               = ErrXTest.New("the func is timeout")
 	ErrParamTypeNotFunc          = ErrXTest.New("the type of the parameters is not func")
