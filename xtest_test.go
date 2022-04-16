@@ -1,6 +1,7 @@
 package xtest
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"testing"
@@ -61,39 +62,35 @@ func TestExampleFixture(t *testing.T) {
 }
 
 type ExampleFixture struct {
-	*gunit.Fixture
+	*Fixture
 	i int
 }
 
-func (t *ExampleFixture) Teardown() {
-}
-
-func (t *ExampleFixture) GenReq() map[string]Request {
-	return map[string]Request{
-		"Hello": {
-			Gen: func(name string, name1 string) *Hello {
-				return &Hello{Name: name, HName1: name1}
-			},
-			Data: [][]interface{}{
-				{"hello", "world", "world1"},
-				{"hello", "world", "world1"},
-			},
-		},
-	}
-}
-
 func (t *ExampleFixture) Setup() {
+	t.AddParamHandleFunc("Hello",
+		Param{
+			{"hello", "world", "world1"},
+			{"hello", "world", "world1"},
+		},
+		func(name string, name1 string) *Hello {
+			return &Hello{Name: name, HName1: name1}
+		},
+	)
+
 	t.i++
 	i++
 	log.Println("SetupStuff", t.i, i)
 }
 
+func (t *ExampleFixture) Teardown() {
+}
+
 type Hello struct {
-	Name   string
-	HName1 string
+	Name   string `json:"name"`
+	HName1 string `json:"hName1"`
 }
 
 // This is an actual test case:
 func (t *ExampleFixture) Hello(req *Hello) (*Hello, error) {
-	return req, nil
+	return req, errors.New("ss")
 }

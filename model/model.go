@@ -1,6 +1,7 @@
 package model
 
 type Result struct {
+	Id       int
 	Service  string
 	Name     string
 	Request  interface{}

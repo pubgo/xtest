@@ -83,7 +83,7 @@ type Printer struct {
 	w                 io.Writer
 }
 
-// New creates a new Printer on w with the given Options.
+// New creates a new Printer on w with the given Fixture.
 func NewPrinter(w io.Writer, options ...Option) *Printer {
 	p := &Printer{
 		w:         w,
@@ -119,7 +119,7 @@ func (p *Printer) Print(vs ...interface{}) {
 		}
 		p.reprValue(map[reflect.Value]bool{}, reflect.ValueOf(v), "")
 	}
-	fmt.Println( "")
+	fmt.Println("")
 }
 
 // Println prints each value on a new line.

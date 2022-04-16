@@ -2,15 +2,32 @@ package xtest
 
 import (
 	"fmt"
-	"math/rand"
+	"github.com/pubgo/x/stack"
 	"reflect"
 	"testing"
 
 	"github.com/pubgo/x/fx"
-	"github.com/pubgo/x/stack"
 	"github.com/pubgo/xerror"
-	"github.com/pubgo/xtest/model"
+	"github.com/smartystreets/assertions"
+	"github.com/smartystreets/assertions/should"
 )
+
+type Param [][]interface{}
+
+type Fixture struct {
+	data map[string]*Params
+}
+
+func (t *Fixture) AddParamHandleFunc(name string, params Param, fn interface{}) {
+	if t.data == nil {
+		t.data = make(map[string]*Params)
+	}
+	var p = &Params{fn: fn}
+	for i := range params {
+		p.In(params[i]...)
+	}
+	t.data[name] = p
+}
 
 func serviceMethod(val interface{}) map[string]map[string]reflect.Value {
 	var data = make(map[string]map[string]reflect.Value)
@@ -20,42 +37,51 @@ func serviceMethod(val interface{}) map[string]map[string]reflect.Value {
 
 	var v = reflect.ValueOf(val)
 	for i := t.NumMethod() - 1; i >= 0; i-- {
+		fmt.Println(stack.Func(t.Method(i).Func.Interface()))
 		data[name][t.Method(i).Name] = v.Method(i)
 	}
 	return data
 }
 
-type Request struct {
-	Gen  interface{}
-	Data [][]interface{}
+type Params struct {
+	fn     interface{}
+	params [][]interface{}
+}
+
+func (t *Params) In(args ...interface{}) *Params {
+	var params [][]interface{}
+	if len(t.params) == 0 {
+		for _, arg := range args {
+			params = append(params, []interface{}{arg})
+		}
+	} else {
+		for _, p := range t.params {
+			for _, arg := range args {
+				params = append(params, append(p, arg))
+			}
+		}
+	}
+	t.params = params
+	return t
 }
 
 type Test interface {
 	Setup()
 	Teardown()
-	GenReq() map[string]Request
 }
 
 type grpcTest struct {
-	tt     Test
-	t      *testing.T
-	name   string
-	req    map[string]Request
-	srv    map[string]map[string]reflect.Value
-	fn     interface{}
-	params [][]interface{}
-}
-
-func randVal(data ...interface{}) interface{} {
-	return data[rand.Intn(len(data))]
+	tt      Test
+	fixture *Fixture
+	t       *testing.T
+	srv     map[string]map[string]reflect.Value
+	fn      interface{}
 }
 
 func (t *grpcTest) Do() {
 	defer xerror.RespExit()
 
-	// setup
-	// defer teardown
-	t.t.Log("Setup", stack.Func(t.tt.Setup))
+	t.t.Log("Setup")
 	t.tt.Setup()
 	t.t.Cleanup(func() {
 		t.t.Log("Teardown")
@@ -63,25 +89,21 @@ func (t *grpcTest) Do() {
 	})
 
 	var cache = make(map[string]bool)
-	//asseet := assertions.New(t.t)
+	asseet := assertions.New(t.t)
+	//var id = time.Now().Unix()
 
 	// record uuid
 	for srv, methods := range t.srv {
 		t.t.Run(srv, func(tt *testing.T) {
 			for name, fn := range methods {
 
-				if t.req[name].Gen == nil {
+				if t.fixture.data[name] == nil {
 					continue
 				}
 
 				tt.Run(name, func(tt *testing.T) {
 					wfn := fx.WrapReflect(fn)
-					for i := 0; i < 10; i++ {
-						var ppp []interface{}
-						for _, ddd := range t.req[name].Data {
-							ppp = append(ppp, randVal(ddd...))
-						}
-
+					for _, ppp := range t.fixture.data[name].params {
 						var nnn = fmt.Sprintf("%v", ppp)
 						if cache[nnn] {
 							continue
@@ -89,20 +111,17 @@ func (t *grpcTest) Do() {
 
 						cache[nnn] = true
 
-						var ddddd = fx.WrapRaw(t.req[name].Gen)(ppp...)
-						tt.Run(fmt.Sprintf("%#v", ddddd[0].Interface()), func(t *testing.T) {
-							_ = ddddd
-							_ = wfn
-							//resp := wfn(ddddd...)
-							//var dt = resp[0]
-							//var err = resp[1]
-							//_ = dt
-							//// err check
-							//// save result
-							//convey.So(err, convey.ShouldBeNil)
-
-							//asseet.So(nil, should.BeNil)
-							fmt.Printf("%#v\n", &model.Result{Name: name, Service: srv, Request: ddddd[0].Interface()})
+						var ret = fx.WrapRaw(t.fixture.data[name].fn)(ppp...)
+						tt.Run(fmt.Sprintf("%#v", ret[0].Interface()), func(tt *testing.T) {
+							resp := wfn(ret...)
+							var dt = resp[0].Interface()
+							var err = resp[1].Interface()
+							t.t.Log(err, dt)
+							asseet.So(err, should.BeNil)
+							asseet.So(dt, should.NotBeNil)
+							fmt.Println(stack.Func(fn.Interface()))
+							//fmt.Printf("%#v\n", &model.Result{
+							//	Name: name, Service: srv, Request: ret[0].Interface(), Id: int(id)})
 						})
 					}
 				})
@@ -113,7 +132,15 @@ func (t *grpcTest) Do() {
 
 func Run(t *testing.T, tests ...Test) {
 	for i := range tests {
-		(&grpcTest{tt: tests[i], t: t, srv: serviceMethod(tests[i]), req: tests[i].GenReq()}).Do()
+		var fix = &Fixture{}
+		optsV := reflect.ValueOf(tests[i]).Elem().FieldByName("Fixture")
+		optsV.Set(reflect.ValueOf(fix))
+		(&grpcTest{
+			fixture: fix,
+			tt:      tests[i],
+			t:       t,
+			srv:     serviceMethod(tests[i]),
+		}).Do()
 	}
 }
 
