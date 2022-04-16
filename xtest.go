@@ -1,6 +1,7 @@
 package xtest
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -104,14 +105,16 @@ func (t *grpcTest) Do() {
 			wfn := fx.WrapRaw(h.fn)
 			for i := uint(0); i < t.fixture.RunNum; i++ {
 				ppp := t.fixture.data[name]()
-				var nnn = fmt.Sprintf("%v", ppp)
+				var dt, err = json.Marshal(t.fixture.data[name]())
+				xerror.Panic(err)
+				var nnn = string(dt)
 				if cache[nnn] {
 					continue
 				}
 
 				cache[nnn] = true
 
-				tt.Run(fmt.Sprintf("%#v", ppp), func(tt *testing.T) {
+				tt.Run(nnn, func(tt *testing.T) {
 					resp := wfn(ppp)
 					var err = resp[1]
 
@@ -129,7 +132,11 @@ func (t *grpcTest) Do() {
 						tt.Fatal(err.Interface())
 					}
 
-					tt.Logf("resp: %#v", resp[0])
+					if !resp[0].IsNil() {
+						dt, err := json.Marshal(resp[0].Interface())
+						xerror.Panic(err)
+						tt.Logf("resp: %s", dt)
+					}
 				})
 			}
 		})
