@@ -29,15 +29,12 @@ type ExampleFixture struct {
 }
 
 func (t *ExampleFixture) Setup() {
-	t.InitHandlerParam("Hello",
-		func(p *Params) {
-			p.In("hello", "world", "world1")
-			p.In("hello", "world", "world1")
-		},
-		func(name string, name1 string) *Hello {
-			return &Hello{Name: name, HName1: name1}
-		},
-	)
+	t.InitHandlerParam("Hello", func() interface{} {
+		return &Hello{
+			Name:   RandS("hello", "world", "world1"),
+			HName1: RandS("hello", "world", "world1"),
+		}
+	})
 
 	t.i++
 	log.Println("SetupStuff", t.i)

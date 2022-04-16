@@ -2,6 +2,7 @@ package xtest
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 
@@ -11,9 +12,18 @@ import (
 	"github.com/smartystreets/assertions"
 )
 
+func Rand(data ...interface{}) interface{} {
+	return data[rand.Intn(len(data))]
+}
+
+func RandS(strList ...string) string {
+	return strList[rand.Intn(len(strList))]
+}
+
 type Fixture struct {
+	RunNum uint
 	assert *assertions.Assertion
-	data   map[string]*Params
+	data   map[string]func() interface{}
 }
 
 func (t *Fixture) So(
@@ -27,15 +37,14 @@ func (t *Fixture) Failed() bool {
 	return t.assert.Failed()
 }
 
-func (t *Fixture) InitHandlerParam(name string, pf func(p *Params), fn interface{}) {
-	xerror.Assert(name == "" || pf == nil || fn == nil, "name or pf or fn is null")
+func (t *Fixture) InitHandlerParam(name string, fn func() interface{}) {
+	xerror.Assert(name == "" || fn == nil, "name or fn is null")
 
 	if t.data == nil {
-		t.data = make(map[string]*Params)
+		t.data = make(map[string]func() interface{})
 	}
 
-	t.data[name] = &Params{fn: fn}
-	pf(t.data[name])
+	t.data[name] = fn
 
 }
 
@@ -56,28 +65,6 @@ func serviceMethod(val interface{}) map[string]*handler {
 		}
 	}
 	return data
-}
-
-type Params struct {
-	fn     interface{}
-	params [][]interface{}
-}
-
-func (t *Params) In(args ...interface{}) *Params {
-	var params [][]interface{}
-	if len(t.params) == 0 {
-		for _, arg := range args {
-			params = append(params, []interface{}{arg})
-		}
-	} else {
-		for _, p := range t.params {
-			for _, arg := range args {
-				params = append(params, append(p, arg))
-			}
-		}
-	}
-	t.params = params
-	return t
 }
 
 type Test interface {
@@ -114,8 +101,9 @@ func (t *grpcTest) Do() {
 
 		fmt.Println(name+":", h.stack)
 		t.t.Run(name, func(tt *testing.T) {
-			wfn := fx.WrapReflect(h.fn)
-			for _, ppp := range t.fixture.data[name].params {
+			wfn := fx.WrapRaw(h.fn)
+			for i := uint(0); i < t.fixture.RunNum; i++ {
+				ppp := t.fixture.data[name]()
 				var nnn = fmt.Sprintf("%v", ppp)
 				if cache[nnn] {
 					continue
@@ -123,9 +111,8 @@ func (t *grpcTest) Do() {
 
 				cache[nnn] = true
 
-				var ret = fx.WrapRaw(t.fixture.data[name].fn)(ppp...)
-				tt.Run(fmt.Sprintf("%#v", ret[0].Interface()), func(tt *testing.T) {
-					resp := wfn(ret...)
+				tt.Run(fmt.Sprintf("%#v", ppp), func(tt *testing.T) {
+					resp := wfn(ppp)
 					var err = resp[1]
 
 					// ok
@@ -162,7 +149,7 @@ func Run(t *testing.T, tests ...Test) {
 			panic("has not [Fixture] field")
 		}
 
-		var gt = &grpcTest{fixture: &Fixture{assert: assert}, tt: tt, t: t, srv: serviceMethod(tt)}
+		var gt = &grpcTest{fixture: &Fixture{assert: assert, RunNum: 100}, tt: tt, t: t, srv: serviceMethod(tt)}
 		optsV.Set(reflect.ValueOf(gt.fixture))
 		gt.Do()
 	}

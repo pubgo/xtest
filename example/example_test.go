@@ -17,15 +17,12 @@ type Example struct {
 }
 
 func (t *Example) Setup() {
-	t.InitHandlerParam("Hello",
-		func(p *xtest.Params) {
-			p.In("hello", "world", "world1")
-			p.In("hello", "world", "world1")
-		},
-		func(name string, name1 string) *Hello {
-			return &Hello{Name: name, HName1: name1}
-		},
-	)
+	t.InitHandlerParam("Hello", func() interface{} {
+		return &Hello{
+			Name:   xtest.RandS("hello", "world", "world1"),
+			HName1: xtest.RandS("hello", "world", "world1"),
+		}
+	})
 
 	t.i++
 }
@@ -40,5 +37,5 @@ type Hello struct {
 
 // This is an actual test case:
 func (t *Example) Hello(req *Hello) (*Hello, error) {
-	return req, xtest.Ok(errors.New("ss"))
+	return req, xtest.Fail(errors.New("ss"))
 }
