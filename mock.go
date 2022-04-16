@@ -13,24 +13,24 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// RangeBytes ...
+// MockBytes ...
 func MockBytes(min, max int) []byte {
 	var dt = make([]byte, MockInt(min, max))
 	rand.Read(dt)
 	return dt
 }
 
-// RangeString ...
+// MockString ...
 func MockString(min, max int) string {
 	return string(MockBytes(min, max))
 }
 
-// RangeDur ...
+// MockDur ...
 func MockDur(min, max time.Duration) time.Duration {
 	return time.Duration(MockInt(int(min), int(max)))
 }
 
-// Range ...
+// MockInt ...
 func MockInt(min, max int) int {
 	if min >= max {
 		return max
@@ -55,7 +55,7 @@ func MockRegister(fns ...interface{}) {
 	}
 }
 
-// Check ...
+// MockCheck ...
 func MockCheck(args ...bool) {
 	for _, arg := range args {
 		if arg {

@@ -6,43 +6,7 @@ import (
 	"log"
 	"testing"
 	"time"
-
-	"github.com/pubgo/xerror"
-	"github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/gunit"
 )
-
-func TestXTest(t *testing.T) {
-	defer Leak(t)
-	gunit.Run(new(xtestFixture), t, gunit.Options.AllSequential())
-}
-
-type xtestFixture struct {
-	dd convey.FailureMode
-	fv convey.C
-	*gunit.Fixture
-}
-
-func TestRangeString(t *testing.T) {
-	convey.Convey("RangeString", t, func() {
-		fn := TestFunc("RangeString", func(min, max int) {
-			convey.Convey(fmt.Sprint("min=", min, "  max=", max), func() {
-				defer xerror.Resp(func(err xerror.XErr) {
-					switch err.Error() {
-					case "invalid argument to Intn", "runtime error: makeslice: len out of range":
-						convey.So(err, convey.ShouldNotEqual, "")
-					default:
-						xerror.Exit(err)
-					}
-				})
-
-				dt := MockString(min, max)
-				convey.So(len(dt) < max && len(dt) >= min, convey.ShouldBeTrue)
-			})
-		})
-		fn.Do()
-	})
-}
 
 func TestBen(t *testing.T) {
 	MemStatsPrint()
@@ -55,8 +19,6 @@ func TestBen(t *testing.T) {
 	Debugln()
 }
 
-var i = 1
-
 func TestExampleFixture(t *testing.T) {
 	Run(t, new(ExampleFixture))
 }
@@ -67,10 +29,10 @@ type ExampleFixture struct {
 }
 
 func (t *ExampleFixture) Setup() {
-	t.AddParamHandleFunc("Hello",
-		Param{
-			{"hello", "world", "world1"},
-			{"hello", "world", "world1"},
+	t.InitHandlerParam("Hello",
+		func(p *Params) {
+			p.In("hello", "world", "world1")
+			p.In("hello", "world", "world1")
 		},
 		func(name string, name1 string) *Hello {
 			return &Hello{Name: name, HName1: name1}
@@ -78,8 +40,7 @@ func (t *ExampleFixture) Setup() {
 	)
 
 	t.i++
-	i++
-	log.Println("SetupStuff", t.i, i)
+	log.Println("SetupStuff", t.i)
 }
 
 func (t *ExampleFixture) Teardown() {

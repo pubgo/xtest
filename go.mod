@@ -8,6 +8,4 @@ require (
 	github.com/pubgo/x v0.3.36
 	github.com/pubgo/xerror v0.4.16
 	github.com/smartystreets/assertions v1.1.0
-	github.com/smartystreets/goconvey v1.6.4
-	github.com/smartystreets/gunit v1.3.4
 )

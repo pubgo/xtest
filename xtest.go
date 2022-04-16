@@ -2,43 +2,58 @@ package xtest
 
 import (
 	"fmt"
-	"github.com/pubgo/x/stack"
 	"reflect"
 	"testing"
 
 	"github.com/pubgo/x/fx"
+	"github.com/pubgo/x/stack"
 	"github.com/pubgo/xerror"
 	"github.com/smartystreets/assertions"
-	"github.com/smartystreets/assertions/should"
 )
 
-type Param [][]interface{}
-
 type Fixture struct {
-	data map[string]*Params
+	assert *assertions.Assertion
+	data   map[string]*Params
 }
 
-func (t *Fixture) AddParamHandleFunc(name string, params Param, fn interface{}) {
+func (t *Fixture) So(
+	actual interface{},
+	assert func(actual interface{}, expected ...interface{}) string,
+	expected ...interface{}) bool {
+	return t.assert.So(actual, assert, expected)
+}
+
+func (t *Fixture) Failed() bool {
+	return t.assert.Failed()
+}
+
+func (t *Fixture) InitHandlerParam(name string, pf func(p *Params), fn interface{}) {
+	xerror.Assert(name == "" || pf == nil || fn == nil, "name or pf or fn is null")
+
 	if t.data == nil {
 		t.data = make(map[string]*Params)
 	}
-	var p = &Params{fn: fn}
-	for i := range params {
-		p.In(params[i]...)
-	}
-	t.data[name] = p
+
+	t.data[name] = &Params{fn: fn}
+	pf(t.data[name])
+
 }
 
-func serviceMethod(val interface{}) map[string]map[string]reflect.Value {
-	var data = make(map[string]map[string]reflect.Value)
-	var t = reflect.TypeOf(val)
-	var name = t.String()
-	data[name] = make(map[string]reflect.Value)
+type handler struct {
+	fn    reflect.Value
+	stack string
+}
 
+func serviceMethod(val interface{}) map[string]*handler {
+	var data = make(map[string]*handler)
+	var t = reflect.TypeOf(val)
 	var v = reflect.ValueOf(val)
 	for i := t.NumMethod() - 1; i >= 0; i-- {
-		fmt.Println(stack.Func(t.Method(i).Func.Interface()))
-		data[name][t.Method(i).Name] = v.Method(i)
+		var s = stack.Func(t.Method(i).Func.Interface())
+		data[t.Method(i).Name] = &handler{
+			fn:    v.Method(i),
+			stack: s,
+		}
 	}
 	return data
 }
@@ -74,56 +89,60 @@ type grpcTest struct {
 	tt      Test
 	fixture *Fixture
 	t       *testing.T
-	srv     map[string]map[string]reflect.Value
+	srv     map[string]*handler
 	fn      interface{}
 }
 
 func (t *grpcTest) Do() {
 	defer xerror.RespExit()
 
-	t.t.Log("Setup")
+	fmt.Println("Setup:", t.srv["Setup"].stack)
 	t.tt.Setup()
 	t.t.Cleanup(func() {
-		t.t.Log("Teardown")
+		fmt.Println("Teardown:", t.srv["Teardown"].stack)
 		t.tt.Teardown()
 	})
 
 	var cache = make(map[string]bool)
-	asseet := assertions.New(t.t)
 	//var id = time.Now().Unix()
 
 	// record uuid
-	for srv, methods := range t.srv {
-		t.t.Run(srv, func(tt *testing.T) {
-			for name, fn := range methods {
+	for name, h := range t.srv {
+		if t.fixture.data[name] == nil {
+			continue
+		}
 
-				if t.fixture.data[name] == nil {
+		fmt.Println(name+":", h.stack)
+		t.t.Run(name, func(tt *testing.T) {
+			wfn := fx.WrapReflect(h.fn)
+			for _, ppp := range t.fixture.data[name].params {
+				var nnn = fmt.Sprintf("%v", ppp)
+				if cache[nnn] {
 					continue
 				}
 
-				tt.Run(name, func(tt *testing.T) {
-					wfn := fx.WrapReflect(fn)
-					for _, ppp := range t.fixture.data[name].params {
-						var nnn = fmt.Sprintf("%v", ppp)
-						if cache[nnn] {
-							continue
-						}
+				cache[nnn] = true
 
-						cache[nnn] = true
+				var ret = fx.WrapRaw(t.fixture.data[name].fn)(ppp...)
+				tt.Run(fmt.Sprintf("%#v", ret[0].Interface()), func(tt *testing.T) {
+					resp := wfn(ret...)
+					var err = resp[1]
 
-						var ret = fx.WrapRaw(t.fixture.data[name].fn)(ppp...)
-						tt.Run(fmt.Sprintf("%#v", ret[0].Interface()), func(tt *testing.T) {
-							resp := wfn(ret...)
-							var dt = resp[0].Interface()
-							var err = resp[1].Interface()
-							t.t.Log(err, dt)
-							asseet.So(err, should.BeNil)
-							asseet.So(dt, should.NotBeNil)
-							fmt.Println(stack.Func(fn.Interface()))
-							//fmt.Printf("%#v\n", &model.Result{
-							//	Name: name, Service: srv, Request: ret[0].Interface(), Id: int(id)})
-						})
+					// ok
+					if !err.IsValid() || err.IsNil() {
+						return
 					}
+
+					switch err.Interface().(type) {
+					case *okErr:
+						tt.Log(err.Interface())
+					case *failErr:
+						tt.Error(err.Interface())
+					case error:
+						tt.Fatal(err.Interface())
+					}
+
+					tt.Logf("resp: %#v", resp[0])
 				})
 			}
 		})
@@ -131,27 +150,36 @@ func (t *grpcTest) Do() {
 }
 
 func Run(t *testing.T, tests ...Test) {
+	assert := assertions.New(t)
 	for i := range tests {
-		var fix = &Fixture{}
-		optsV := reflect.ValueOf(tests[i]).Elem().FieldByName("Fixture")
-		optsV.Set(reflect.ValueOf(fix))
-		(&grpcTest{
-			fixture: fix,
-			tt:      tests[i],
-			t:       t,
-			srv:     serviceMethod(tests[i]),
-		}).Do()
+		var tt = tests[i]
+		if tt == nil {
+			panic(fmt.Sprintf("tests[%d] is nil", i))
+		}
+
+		optsV := reflect.ValueOf(tt).Elem().FieldByName("Fixture")
+		if !optsV.IsValid() {
+			panic("has not [Fixture] field")
+		}
+
+		var gt = &grpcTest{fixture: &Fixture{assert: assert}, tt: tt, t: t, srv: serviceMethod(tt)}
+		optsV.Set(reflect.ValueOf(gt.fixture))
+		gt.Do()
 	}
 }
 
-func TestFunc(name string, fn interface{}) *grpcTest {
-	if fn == nil {
-		xerror.Exit(ErrParamIsNil)
-	}
+type okErr struct {
+	error
+}
 
-	if reflect.TypeOf(fn).Kind() != reflect.Func {
-		xerror.PanicF(ErrParamTypeNotFunc, "kind: %s, name: %s", reflect.TypeOf(fn).Kind(), reflect.TypeOf(fn))
-	}
+type failErr struct {
+	error
+}
 
-	return &grpcTest{fn: fn}
+func Ok(err error) error {
+	return &okErr{err}
+}
+
+func Fail(err error) error {
+	return &failErr{err}
 }
