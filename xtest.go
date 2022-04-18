@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/pubgo/x/fx"
@@ -22,9 +23,9 @@ func RandS(strList ...string) string {
 }
 
 type Fixture struct {
+	*testing.T
 	RunNum uint
 	assert *assertions.Assertion
-	data   map[string]func() interface{}
 }
 
 func (t *Fixture) So(
@@ -38,19 +39,9 @@ func (t *Fixture) Failed() bool {
 	return t.assert.Failed()
 }
 
-func (t *Fixture) InitHandlerParam(name string, fn func() interface{}) {
-	xerror.Assert(name == "" || fn == nil, "name or fn is null")
-
-	if t.data == nil {
-		t.data = make(map[string]func() interface{})
-	}
-
-	t.data[name] = fn
-
-}
-
 type handler struct {
 	fn    reflect.Value
+	gen   reflect.Value
 	stack string
 }
 
@@ -59,10 +50,17 @@ func serviceMethod(val interface{}) map[string]*handler {
 	var t = reflect.TypeOf(val)
 	var v = reflect.ValueOf(val)
 	for i := t.NumMethod() - 1; i >= 0; i-- {
+		if strings.HasPrefix(t.Method(i).Name, "Mock") {
+			continue
+		}
+
+		var genName = fmt.Sprintf("Mock%s", t.Method(i).Name)
+		var genFn = v.MethodByName(genName)
 		var s = stack.Func(t.Method(i).Func.Interface())
 		data[t.Method(i).Name] = &handler{
 			fn:    v.Method(i),
 			stack: s,
+			gen:   genFn,
 		}
 	}
 	return data
@@ -74,6 +72,7 @@ type Test interface {
 }
 
 type grpcTest struct {
+	name    string
 	tt      Test
 	fixture *Fixture
 	t       *testing.T
@@ -96,16 +95,16 @@ func (t *grpcTest) Do() {
 
 	// record uuid
 	for name, h := range t.srv {
-		if t.fixture.data[name] == nil {
+		if !h.gen.IsValid() || h.gen.IsNil() {
 			continue
 		}
 
 		fmt.Println(name+":", h.stack)
 		t.t.Run(name, func(tt *testing.T) {
-			wfn := fx.WrapRaw(h.fn)
+			wfn := fx.WrapReflect(h.fn)
 			for i := uint(0); i < t.fixture.RunNum; i++ {
-				ppp := t.fixture.data[name]()
-				var dt, err = json.Marshal(t.fixture.data[name]())
+				ppp := h.gen.Call(nil)
+				var dt, err = json.Marshal(ppp[0].Interface())
 				xerror.Panic(err)
 				var nnn = string(dt)
 				if cache[nnn] {
@@ -115,7 +114,7 @@ func (t *grpcTest) Do() {
 				cache[nnn] = true
 
 				tt.Run(nnn, func(tt *testing.T) {
-					resp := wfn(ppp)
+					resp := wfn(ppp...)
 					var err = resp[1]
 
 					// ok
@@ -151,12 +150,15 @@ func Run(t *testing.T, tests ...Test) {
 			panic(fmt.Sprintf("tests[%d] is nil", i))
 		}
 
+		var fix = &Fixture{T: t, assert: assert, RunNum: 100}
+		var name = reflect.TypeOf(tt).Elem().Name()
+
 		optsV := reflect.ValueOf(tt).Elem().FieldByName("Fixture")
 		if !optsV.IsValid() {
 			panic("has not [Fixture] field")
 		}
 
-		var gt = &grpcTest{fixture: &Fixture{assert: assert, RunNum: 100}, tt: tt, t: t, srv: serviceMethod(tt)}
+		var gt = &grpcTest{name: name, fixture: fix, tt: tt, t: t, srv: serviceMethod(tt)}
 		optsV.Set(reflect.ValueOf(gt.fixture))
 		gt.Do()
 	}

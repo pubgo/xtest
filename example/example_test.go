@@ -17,13 +17,6 @@ type Example struct {
 }
 
 func (t *Example) Setup() {
-	t.InitHandlerParam("Hello", func() interface{} {
-		return &Hello{
-			Name:   xtest.RandS("", "hello", "world", "world1"),
-			HName1: xtest.RandS("", "hello", "world", "world1"),
-		}
-	})
-
 	t.i++
 }
 
@@ -33,6 +26,13 @@ func (t *Example) Teardown() {
 type Hello struct {
 	Name   string `json:"name"`
 	HName1 string `json:"hName1"`
+}
+
+func (t *Example) MockHello() *Hello {
+	return &Hello{
+		Name:   xtest.RandS("", "hello", "world", "world1"),
+		HName1: xtest.RandS("", "hello", "world", "world1"),
+	}
 }
 
 // This is an actual test case:
